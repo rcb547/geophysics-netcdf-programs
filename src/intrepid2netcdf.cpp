@@ -22,8 +22,6 @@ class cStackTrace gtrace;
 #define _PROGRAM_ "intrepid2netcdf"
 #define _VERSION_ "1.0"
 
-#include <mpi.h>
-
 #include "general_utils.h"
 #include "file_utils.h"
 #include "blocklanguage.h"
@@ -39,9 +37,7 @@ class cStackTrace gtrace;
 
 class cLogger glog; //The instance of the global log file manager
 
-class cIntrepidToNetCDFConverter {
-	int MPISize;
-	int MPIRank;
+class cIntrepidToNetCDFConverter {	
 	std::string IntrepiDatabasePath;
 	std::string NCPath;
 	bool OverWriteExistingNcFiles = true;
@@ -49,10 +45,8 @@ class cIntrepidToNetCDFConverter {
 
 public:
 
-	cIntrepidToNetCDFConverter(const std::string& intrepiddatabasepath, const std::string& ncfilepath, const int mpisize, const int mpirank) {
-		_GSTITEM_
-		MPISize = mpisize;
-		MPIRank = mpirank;
+	cIntrepidToNetCDFConverter(const std::string& intrepiddatabasepath, const std::string& ncfilepath) {
+		_GSTITEM_;
 		IntrepiDatabasePath = fixseparator(intrepiddatabasepath);
 		NCPath = fixseparator(ncfilepath);
 		LogFile = NCPath + ".log";
@@ -63,7 +57,7 @@ public:
 		glog.log("Working directory %s\n", getcurrentdirectory().c_str());		
 		bool status = process();	
 		if (status == false) {
-			glog.logmsg(MPIRank,"Error 0: converting %s to %s\n",intrepiddatabasepath.c_str(), ncfilepath.c_str());			
+			glog.logmsg("Error 0: converting %s to %s\n",intrepiddatabasepath.c_str(), ncfilepath.c_str());			
 		}
 		glog.close();		
 	};
@@ -379,23 +373,18 @@ public:
 int main(int argc, char** argv)
 {
 	_GSTITEM_
-
-	int mpisize;
-	int mpirank;
-	MPI_Init(&argc, &argv);
-	MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
-	MPI_Comm_rank(MPI_COMM_WORLD, &mpirank);
-
-	glog.logmsg(0,"Program %s \n", _PROGRAM_);
-	glog.logmsg(0,"Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
-	glog.logmsg(0,"Working directory %s\n", getcurrentdirectory().c_str());	
+			
+	glog.logmsg("Program %s \n", _PROGRAM_);
+	glog.logmsg("Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
+	glog.logmsg("Working directory %s\n", getcurrentdirectory().c_str());	
 
 	try
 	{
 		if (argc == 3) {
 			std::string dbname = argv[1];
 			std::string ncname = argv[2];
-			cIntrepidToNetCDFConverter C(dbname, ncname, 1, 0);
+			cIntrepidToNetCDFConverter C(dbname, ncname);
+			glog.logmsg("Finished\n");
 		}
 		else if (argc == 4) {		
 			std::string dbdir = argv[1];
@@ -412,39 +401,30 @@ int main(int argc, char** argv)
 				if (db.size() > 0 && db[0] != '#') {
 					sFilePathParts fpp = getfilepathparts(db);
 					std::string dbname = dbdir + fpp.directory + fpp.prefix;
-					std::string ncname = ncdir + fpp.directory + fpp.prefix + ".nc";
-					if (k % mpisize == mpirank) {
-						std::cout << "[" << mpirank << "] " << dbname << " " << ncname << std::endl << std::flush;
-						cIntrepidToNetCDFConverter C(dbname, ncname, mpisize, mpirank);
-					}
-					k++;
+					std::string ncname = ncdir + fpp.directory + fpp.prefix + ".nc";					
+					std::cout << dbname << " " << ncname << std::endl << std::flush;
+					cIntrepidToNetCDFConverter C(dbname, ncname);										
 				}
 			}
+			glog.logmsg("Finished\n");
 		}
-		else {
-			glog.logmsg(0,"\nUsage: %s input_database output_ncfile\n",extractfilename(argv[0]).c_str());
-			glog.logmsg(0,"or\n");
-			glog.logmsg(0,"       %s databases_dir ncfiles_dir conversion_list_file\n", extractfilename(argv[0]).c_str());			
+		else {			
+			std::cout << "Usage: " << extractfilename(argv[0]) << " input_database output_ncfile" << std::endl;			
+			std::cout << "   or: " << extractfilename(argv[0]) << " databases_dir ncfiles_dir list_of_databases.txt" << std::endl;
 		}
 	}
 	catch (NcException& e)
 	{
 		_GSTPRINT_
-		std::cout << e.what() << std::endl;
-		MPI_Finalize();
+		std::cout << e.what() << std::endl;		
 		return 1;
 	}
 	catch (std::exception& e)
 	{
 		_GSTPRINT_
-		std::cout << e.what() << std::endl;
-		MPI_Finalize();
+		std::cout << e.what() << std::endl;		
 		return 1;
-	}
-
-	MPI_Barrier(MPI_COMM_WORLD);
-	glog.logmsg(0,"Finished\n");
-	MPI_Finalize();	
+	}		
 	return 0;
 }
 

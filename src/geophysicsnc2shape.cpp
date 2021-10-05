@@ -22,8 +22,6 @@ class cStackTrace gtrace;
 #define _PROGRAM_ "geophysicsnc2shape"
 #define _VERSION_ "1.0"
 
-#include <mpi.h>
-
 #include "general_utils.h"
 #include "file_utils.h"
 #include "logger.h"
@@ -37,31 +35,18 @@ class cStackTrace gtrace;
 
 class cLogger glog; //The instance of the global log file manager
 
-class cNcToShapefileConverter {
-	int MPISize;
-	int MPIRank;	
+class cNcToShapefileConverter {	
 	std::string NCPath;
 	std::string ShapePath;	
-	std::string LogFile;	
-
 public:
 
-	cNcToShapefileConverter(const std::string& ncfilepath, const std::string& shapefilepath, 		const int mpisize, const int mpirank) {
-		_GSTITEM_ 
-		MPISize = mpisize;
-		MPIRank = mpirank;
-				
+	cNcToShapefileConverter(const std::string& ncfilepath, const std::string& shapefilepath) {
+		_GSTITEM_;
 		NCPath    = fixseparator(ncfilepath);
-		ShapePath = fixseparator(shapefilepath);
-		LogFile   = ShapePath + ".log";
-		
-		glog.open(LogFile);
-		glog.log("Program %s \n", _PROGRAM_);
-		glog.log("Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
-		glog.log("Working directory %s\n", getcurrentdirectory().c_str());		
+		ShapePath = fixseparator(shapefilepath);						
 		bool status = process();	
 		if (status == false) {
-			glog.logmsg(MPIRank,"Error 0: creating shapefile %s from %s\n",ShapePath.c_str(),NCPath.c_str());
+			glog.logmsg("Error 0: creating shapefile %s from %s\n",ShapePath.c_str(),NCPath.c_str());
 		}
 		glog.close();			
 	};
@@ -107,7 +92,10 @@ public:
 		return ltype;
 	}
 
-	bool process() {		
+	bool process() {	
+		if (!exists(extractfiledirectory(ShapePath))){
+			makedirectorydeep(extractfiledirectory(ShapePath));
+		}
 		cGeoDataset D = cGeoDataset::create_shapefile(ShapePath);
 		cLayer L = D.create_layer("flight_lines", OGRwkbGeometryType::wkbLineString);
 		std::vector<cAttribute> atts;
@@ -201,57 +189,8 @@ public:
 					atts[1].value = (int)ltype[li];
 				}
 				L.add_linestring_feature(atts, xout, yout);
-
-				continue;
-				
-				/*
-				double meanlong = mean(xout);
-				int zone = std::ceil((meanlong + 180.0) / 6.0);
-				
-				//std::string zonestr = strprint("MGA%02d", zone);
-				//int epsgcode_geodetic = getepsgcode("GDA94", "GEODETIC");
-				//int epsgcode_utm      = getepsgcode("GDA94", zonestr);
-
-				std::string zonestr   = strprint("UTM%02dS", zone);
-				int epsgcode_geodetic = getepsgcode("WGS84", "GEODETIC");
-				//int epsgcode_utm      = getepsgcode("WGS84", zonestr);
-				int epsgcode_utm = 32752;
-
-			    printf("zone=%d\n",zone);
-			    printf("zonestr=%s\n",zonestr.c_str());
-				printf("epsgcode_geodetic=%d\n",epsgcode_geodetic);
-			    printf("epsgcode_utm     =%d\n",epsgcode_utm);
-			    
-				for (size_t j = 1; j < xout.size(); j++) {
-				    printf("%lf,%lf\n",xout[j],yout[j]);
-				}
-
-				std::vector<double> e;
-				std::vector<double> n;
-				transform(epsgcode_geodetic, xout, yout, epsgcode_utm, e, n);
-				
-				for (size_t j = 0; j < xout.size(); j++) {
-				    printf("%lf,%lf\n",xout[j],yout[j]);
-				}
-
-				double d = 0.0;
-				for (size_t j = 1; j < e.size(); j++) {
-					d += std::hypot(e[j] - e[j - 1], n[j] - n[j - 1]);
-				}
-
-				lkm0[li] = d / 1000.0;				
-				if (ltype.size() == nl) {
-					if (ltype[li] == 2) lkm2[li] = lkm0[li];
-					if (ltype[li] == 4) lkm4[li] = lkm0[li];
-				}		
-				*/
-				
 			}
-		}		
-		
-		//std::string a = strprint("%s,%.1lf,%.1lf,%.1lf\n",NCPath.c_str(),sum(lkm0), sum(lkm2), sum(lkm4));
-		//glog.logmsg(a);
-		//std::printf(a.c_str());
+		}				
 		return true;
 	}
 };
@@ -262,62 +201,59 @@ int main(int argc, char** argv)
 
 	GDALAllRegister();
 
-	int mpisize;
-	int mpirank;	
-	MPI_Init(&argc, &argv);
-	MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
-	MPI_Comm_rank(MPI_COMM_WORLD, &mpirank);
-
 	glog.logmsg(0,"Program %s \n", _PROGRAM_);
 	glog.logmsg(0,"Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
 	glog.logmsg(0,"Working directory %s\n", getcurrentdirectory().c_str());
 
 	try
-	{
-		std::string ncdir     = argv[1];
-		std::string shapedir  = argv[2];
-		std::string listfile  = argv[3];
-		std::ifstream file(listfile);
-		addtrailingseparator(ncdir);
-		addtrailingseparator(shapedir);
-		int k = 0;
-		while (file.eof() == false) {
-			std::string s;	
-			file >> s;
-			s = trim(s);
-			if (s.size() > 0 && s[0] != '#') {
-				sFilePathParts fpp = getfilepathparts(s);
-				std::string NCPath    = ncdir    + fpp.directory + fpp.prefix + ".nc";
-				std::string ShapePath = shapedir + fpp.directory + fpp.prefix + ".shp";
-				
-				if (k % mpisize == mpirank) {
-					//if (exists(ShapePath) == false) {
-						std::cout << "[" << mpirank << "] " << NCPath << " " << ShapePath << std::endl << std::flush;
-						cNcToShapefileConverter C(NCPath, ShapePath, mpisize, mpirank);
-					//}
+	{		
+		if (argc == 3) {
+			std::string NCPath    = argv[1];
+			std::string ShapePath = argv[2];									
+			std::cout << NCPath << " " << ShapePath << std::endl << std::flush;
+			cNcToShapefileConverter C(NCPath, ShapePath);			
+			glog.logmsg(0, "Finished\n");
+		}
+		else if (argc == 4) {			
+			std::string ncdir = argv[1];
+			std::string shapedir = argv[2];
+			std::string listfile = argv[3];
+			std::ifstream file(listfile);
+			addtrailingseparator(ncdir);
+			addtrailingseparator(shapedir);
+			int k = 0;
+			while (file.eof() == false) {
+				std::string s;
+				file >> s;
+				s = trim(s);
+				if (s.size() > 0 && s[0] != '#') {
+					sFilePathParts fpp = getfilepathparts(s);
+					std::string NCPath = ncdir + fpp.directory + fpp.prefix + ".nc";
+					std::string ShapePath = shapedir + fpp.directory + fpp.prefix + ".shp";
+					std::cout << NCPath << " " << ShapePath << std::endl << std::flush;
+					cNcToShapefileConverter C(NCPath, ShapePath);
+					k++;
 				}
-				k++;
 			}
-		}		
+			glog.logmsg(0, "Finished\n");
+		}
+		else{
+			std::cout << "Usage: " << extractfilename(argv[0]) << " ncfile shapefile" << std::endl;
+			std::cout << "   or: " << extractfilename(argv[0]) << " ncfiles_directory shapefiles_directory list_of_ncfiles.txt" << std::endl;
+		}
 	}
 	catch (NcException& e)
 	{
 		_GSTPRINT_
-		std::cout << e.what() << std::endl;
-		MPI_Finalize();
+		std::cout << e.what() << std::endl;		
 		return 1;
 	}
 	catch (std::exception& e)
 	{
 		_GSTPRINT_
-		std::cout << e.what() << std::endl;
-		MPI_Finalize();
+		std::cout << e.what() << std::endl;		
 		return 1;
-	}
-
-	MPI_Barrier(MPI_COMM_WORLD);
-	glog.logmsg(0,"Finished\n");
-	MPI_Finalize();	
+	}		
 	return 0;
 }
 

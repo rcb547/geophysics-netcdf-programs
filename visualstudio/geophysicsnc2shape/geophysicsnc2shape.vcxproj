@@ -35,7 +35,6 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\propertysheets\msmpi.x64.props" />
     <Import Project="..\propertysheets\gdal.props" />
     <Import Project="..\propertysheets\boost.props" />
     <Import Project="..\propertysheets\cgal.props" />
@@ -46,7 +45,6 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\propertysheets\msmpi.x64.props" />
     <Import Project="..\propertysheets\gdal.props" />
     <Import Project="..\propertysheets\boost.props" />
     <Import Project="..\propertysheets\cgal.props" />
@@ -67,7 +65,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_MPI_ENABLED;USEGLOBALSTACKTRACE;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>USEGLOBALSTACKTRACE;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level1</WarningLevel>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -84,7 +82,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_MPI_ENABLED;USEGLOBALSTACKTRACE;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>USEGLOBALSTACKTRACE;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level1</WarningLevel>
       <LanguageStandard>stdcpp17</LanguageStandard>

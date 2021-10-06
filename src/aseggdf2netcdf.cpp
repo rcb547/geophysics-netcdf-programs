@@ -131,12 +131,12 @@ public:
 	}
 	
 	bool convert_aseggdf2_file() {
-		_GSTITEM_
+		_GSTPUSH_
 
-			if (exists(DatPath) == false) {
-				glog.logmsg("Error 1: Data file %s does not exist\n", DatPath.c_str());
-				return false;
-			}
+		if (exists(DatPath) == false) {
+			glog.logmsg("Error 1: Data file %s does not exist\n", DatPath.c_str());
+			return false;
+		}
 
 		if (exists(DatPath) == false) {
 			glog.logmsg("Error 2: DFN file %s does not exist\n", DfnPath.c_str());
@@ -169,21 +169,26 @@ public:
 
 		glog.logmsg("Adding line index variables\n");
 		ncFile.InitialiseNew(line_number, line_index_count);
-						
+				
 		//Pre process the fields
+		glog.logmsg("Pre processing fields\n");
+		std::vector<nc_type> vartypes(D.fields.size());
+		std::vector<std::string> varnames(D.fields.size());
 		for (size_t fi = 0; fi < D.fields.size(); fi++){
 			cAsciiColumnField& f = D.fields[fi];
-			std::string fieldname = f.name;
+			if (f.longname.size() == 0) {
+				varnames[fi] = f.name;
+			}
+			else {
+				varnames[fi] = f.longname;
+			}
+			std::string& fieldname = varnames[fi];			
 			if (fieldname == DN_LINE || fieldname == "Line"){
 				glog.logmsg("Skip processing field %3zu - %s (already in index)\n", fi, fieldname.c_str());
 				continue;
-			}			
-			else{
-				glog.logmsg("Pre processing field  %3lu - %s\n", fi, fieldname.c_str());
-			}
+			}						
 						
 			size_t nbands = f.nbands;
-
 			std::vector<NcDim> vardims;
 			if (nbands > 1){
 				std::string dimname = "window";
@@ -195,19 +200,16 @@ public:
 				bool status = dimband.isNull();
 				vardims.push_back(dimband);
 			}
-
-			std::string varname = fieldname;
-			nc_type vartype;
-
+			
 			if (f.isinteger()){
-				vartype = NC_INT;
+				vartypes[fi] = NC_INT;
 			}
 			else if(f.isreal()){
 				if (f.width > 8) {
-				    vartype = NC_DOUBLE;
+					vartypes[fi] = NC_DOUBLE;
 				}
 				else {
-					vartype = NC_FLOAT;
+					vartypes[fi] = NC_FLOAT;
 				}				
 			}
 			else {
@@ -215,29 +217,25 @@ public:
 			}
 
 			if (isgroupby[fi]){
-				cLineVar var = ncFile.addLineVar(varname, vartype, vardims);				
+				cLineVar var = ncFile.addLineVar(varnames[fi], vartypes[fi], vardims);
 				//var.add_long_name(fieldname);
 				var.add_original_name(fieldname);
 				var.add_units(f.units);
+				var.add_description(f.description);
 			}
 			else{
-				cSampleVar var = ncFile.addSampleVar(varname, vartype, vardims);
+				cSampleVar var = ncFile.addSampleVar(varnames[fi], vartypes[fi], vardims);
 				//var.add_long_name(fieldname);
 				var.add_original_name(fieldname);
-				var.add_units(f.units);
+				var.add_units(f.units);	
+				var.add_description(f.description);
+			}			
+			std::string istr = "point";
+			if(isgroupby[fi]) istr = "line";
 
-				//if (strcasecmp(fieldname.c_str(), "latitude") == 0) var.add_standard_name("latitude");
-				//else if (strcasecmp(fieldname.c_str(), "Latitude") == 0) var.add_standard_name("latitude");
-				//else if (strcasecmp(fieldname.c_str(), "longitude") == 0) var.add_standard_name("longitude");
-				//else if (strcasecmp(fieldname.c_str(), "Longitude") == 0) var.add_standard_name("longitude");
-				//else;				
-			}
-						
-			NcType t(vartype);
-			std::string tname = NcType(vartype).getTypeClassName();
-			glog.logmsg("type %s\n", tname.c_str());
-			
-		}
+			std::string tname = NcType(vartypes[fi]).getTypeClassName();			
+			glog.logmsg("field index:%zu name:%s datatype:%s bands:%zu indexing:%s units:%s\n", fi + 1, fieldname.c_str(), tname.c_str(),nbands,istr.c_str(),f.units.c_str());
+		}		
 
 		size_t fi_line = D.fieldindexbyname("line");				
 
@@ -246,17 +244,16 @@ public:
 		size_t lineindex = 0;
 		glog.logmsg("Processing lines\n");
 		while (size_t nsamples = D.readnextgroup(fi_line, intfields, dblfields)){			
+			glog.logmsg("Processing line index:%zu linenumber:%u\n",lineindex+1,line_number[lineindex]);
 			for (size_t fi = 0; fi < D.fields.size(); fi++){				
-				std::string fieldname = D.fields[fi].name;
-
-				//if (fieldname == DN_LINE) continue;
-				//if (fieldname == "Line") continue;
+				std::string& fieldname = varnames[fi];
+				//std::cout << D.fields[fi].name << std::endl;				
 				if (fieldname == DN_LINE || fieldname == "Line") continue;
 
 				size_t nbands = D.fields[fi].nbands;
 
 				NcVar var = ncFile.getSampleVar(fieldname);
-				
+					
 				std::vector<size_t> startp(2);
 				std::vector<size_t> countp(2);								
 				for (size_t bi = 0; bi < nbands; bi++){
@@ -278,23 +275,35 @@ public:
 															
 					if (D.fields[fi].isinteger()){
 						std::vector<int> data(nactive);
+						int mv;
+						cGeophysicsVar gv(&ncFile, var);
+						mv = gv.missingvalue(mv);
 						for (size_t si = 0; si < nactive; si++){							
-							data[si] = intfields[fi][si*nbands + bi];
-							if (data[si] == D.fields[fi].nullvalue()){
-								data[si] = defaultmissingvalue(ncInt);
+							int& val = data[si] = intfields[fi][si*nbands + bi];
+							if (!isdefined(val)) {
+								val = mv;
 							}
-						}
-						var.putVar(startp, countp, data.data());
+							else if (val == D.fields[fi].nullvalue()){
+								val = mv;
+							}
+						}						
+						var.putVar(startp, countp, data.data());						
 					}
-					else{
+					else{						
+						double mv;
+						cGeophysicsVar gv(&ncFile,var);
+						mv = gv.missingvalue(mv);												
 						std::vector<double> data(nsamples);
-						for (size_t si = 0; si < nactive; si++){
-							data[si] = dblfields[fi][si*nbands + bi];
-							if (data[si] == D.fields[fi].nullvalue()){
-								data[si] = defaultmissingvalue(ncDouble); 
+						for (size_t si = 0; si < nactive; si++){							
+							double& val = data[si] = dblfields[fi][si*nbands + bi];
+							if (!isdefined(val)) {
+								val = mv;
 							}
-						}
-						var.putVar(startp, countp, data.data());
+							else if (val == D.fields[fi].nullvalue()){
+								val = mv; 
+							}
+						}						
+						var.putVar(startp, countp, data.data());						
 					}
 				}				
 			}			
@@ -302,7 +311,7 @@ public:
 		}		
 		
 		glog.logmsg( "Conversion complete\n");
-
+		_GSTPOP_
 		return true;
 	}
 	
@@ -361,12 +370,13 @@ int main(int argc, char** argv)
 			std::string controlfile = argv[3];
 			cASEGGDF2Converter C(datpath,ncpath,controlfile);
 			double t2 = gettime();
-			printf("Reading data elapsed time = %.2lf\n", t2 - t1);
+			glog.logmsg("Elapsed time = %.2lf\n", t2 - t1);
+			return 0;
 		}
 		else {
 			std::cout << "Usage: " << extractfilename(argv[0]) << " datpath ncpath control_file_name" << std::endl;
 			return 1;
-		}
+		}		
 	}
 	catch (NcException& e)
 	{

@@ -11,18 +11,16 @@ Author: Ross C. Brodie, Geoscience Australia.
 #include <vector>
 #include <limits>
 #include <algorithm>
-using namespace std;
+
 using namespace netCDF;
 using namespace netCDF::exceptions;
 
 #include <fstream>
 #include "general_utils.h"
 #include "file_utils.h"
+#include "blocklanguage.h"
 #include "asciicolumnfile.h"
-#include "gdal_utils.h"
 
-#include "metadata.h"
-#include "crs.h"
 #include "csvfile.h"
 #include "geophysics_netcdf.h"
 
@@ -80,7 +78,7 @@ public:
 		_GSTITEM_
 		size_t fi = D.fieldindexbyname("line");
 		size_t i1 = D.fields[fi].startchar;
-		size_t i2 = D.fields[fi].endchar;
+		size_t i2 = D.fields[fi].endchar();
 
 		unsigned int n = 0;
 		std::ifstream in(DatPath);
@@ -120,7 +118,7 @@ public:
 				for (size_t fi = 0; fi < D.fields.size(); fi++){					
 					if (groupby[fi] == true){						
 						size_t i1 = D.fields[fi].startchar;
-						size_t i2 = D.fields[fi].endchar;
+						size_t i2 = D.fields[fi].endchar();
 						size_t width = i2 - i1 + 1;
 						std::string a = s.substr(i1, width);
 						std::string b = t.substr(i1, width);
@@ -149,8 +147,8 @@ public:
 		cAsciiColumnFile D(DatPath);
 
 		glog.logmsg("Parsing ASEGGDF2 header\n");
-		D.parse_aseggdf2_header(DfnPath);
-
+		D.parse_aseggdf2_dfn(DfnPath);
+		
 		std::vector<unsigned int> line_number;
 		std::vector<unsigned int> line_index_start;
 		std::vector<unsigned int> line_index_count;
@@ -205,7 +203,7 @@ public:
 				vartype = NC_INT;
 			}
 			else if(f.isreal()){
-				if (f.fmtwidth > 8) {
+				if (f.width > 8) {
 				    vartype = NC_DOUBLE;
 				}
 				else {
@@ -282,7 +280,7 @@ public:
 						std::vector<int> data(nactive);
 						for (size_t si = 0; si < nactive; si++){							
 							data[si] = intfields[fi][si*nbands + bi];
-							if (data[si] == D.fields[fi].nullvalue){
+							if (data[si] == D.fields[fi].nullvalue()){
 								data[si] = defaultmissingvalue(ncInt);
 							}
 						}
@@ -292,7 +290,7 @@ public:
 						std::vector<double> data(nsamples);
 						for (size_t si = 0; si < nactive; si++){
 							data[si] = dblfields[fi][si*nbands + bi];
-							if (data[si] == D.fields[fi].nullvalue){
+							if (data[si] == D.fields[fi].nullvalue()){
 								data[si] = defaultmissingvalue(ncDouble); 
 							}
 						}

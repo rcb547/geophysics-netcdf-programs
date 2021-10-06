@@ -11,9 +11,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\submodules\cpp-utils\src\cgal_utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\submodules\cpp-utils\src\file_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -31,16 +28,10 @@
     <ClInclude Include="..\..\submodules\cpp-utils\src\blocklanguage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\submodules\cpp-utils\src\cgal_utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\submodules\cpp-utils\src\file_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\submodules\cpp-utils\src\general_utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\submodules\cpp-utils\src\intrepid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\submodules\cpp-utils\src\string_utils.h">

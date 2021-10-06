@@ -14,6 +14,7 @@
     <ProjectGuid>{0636C513-CAB2-45C1-8942-FDBFD5653916}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>aseggdf2netcdf</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -34,23 +35,19 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\propertysheets\gdal.props" />
-    <Import Project="..\propertysheets\boost.props" />
-    <Import Project="..\propertysheets\cgal.props" />
     <Import Project="..\propertysheets\netcdf4.props" />
     <Import Project="..\propertysheets\netcdf4-cxx.props" />
     <Import Project="..\propertysheets\cpp-utils.props" />
     <Import Project="..\propertysheets\geophysics-netcdf.props" />
+    <Import Project="..\propertysheets\csv-parser.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\propertysheets\gdal.props" />
-    <Import Project="..\propertysheets\boost.props" />
-    <Import Project="..\propertysheets\cgal.props" />
     <Import Project="..\propertysheets\netcdf4.props" />
     <Import Project="..\propertysheets\netcdf4-cxx.props" />
     <Import Project="..\propertysheets\cpp-utils.props" />
     <Import Project="..\propertysheets\geophysics-netcdf.props" />
+    <Import Project="..\propertysheets\csv-parser.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -69,6 +66,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>USEGLOBALSTACKTRACE;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -86,6 +84,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>USEGLOBALSTACKTRACE;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -98,15 +97,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\aseggdf2netcdf.cpp" />
-    <ClCompile Include="..\..\submodules\cpp-utils\src\cgal_utils.cpp" />
     <ClCompile Include="..\..\submodules\cpp-utils\src\file_utils.cpp" />
-    <ClCompile Include="..\..\submodules\cpp-utils\src\gdal_utils.cpp" />
     <ClCompile Include="..\..\submodules\cpp-utils\src\general_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\submodules\cpp-utils\src\blocklanguage.h" />
-    <ClInclude Include="..\..\submodules\cpp-utils\src\cgal_utils.h" />
-    <ClInclude Include="..\..\submodules\cpp-utils\src\crs.h" />
     <ClInclude Include="..\..\submodules\cpp-utils\src\csvfile.h" />
     <ClInclude Include="..\..\submodules\cpp-utils\src\file_utils.h" />
     <ClInclude Include="..\..\submodules\cpp-utils\src\general_utils.h" />

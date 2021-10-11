@@ -18,6 +18,7 @@ using namespace netCDF::exceptions;
 #include <fstream>
 #include "general_utils.h"
 #include "file_utils.h"
+#include "string_utils.h"
 #include "blocklanguage.h"
 #include "asciicolumnfile.h"
 
@@ -147,8 +148,8 @@ public:
 		cAsciiColumnFile D(DatPath);
 
 		glog.logmsg("Parsing ASEGGDF2 header\n");
-		D.parse_aseggdf2_dfn(DfnPath);
-		
+		D.read_dfn(DfnPath);
+						
 		std::vector<unsigned int> line_number;
 		std::vector<unsigned int> line_index_start;
 		std::vector<unsigned int> line_index_count;
@@ -190,8 +191,13 @@ public:
 						
 			size_t nbands = f.nbands;
 			std::vector<NcDim> vardims;
-			if (nbands > 1){
-				std::string dimname = "window";
+			if (nbands > 1){				
+				std::string dimname = f.atts["second_dimension_name"];
+				if (dimname.size() == 0) {
+					std::string msg = strprint("Error 1: Multiband field %s has no SECOND_DIMENSION_NAME=... tag in .dfn file\n", varnames[fi].c_str());
+					glog.logmsg(msg);
+					throw(std::runtime_error(msg));
+				}
 				NcDim dimband = ncFile.getDim(dimname);
 				if (dimband.isNull()){
 					std::vector<unsigned int> b = increment((unsigned int)nbands, (unsigned int)0, (unsigned int)1);
@@ -217,18 +223,20 @@ public:
 			}
 
 			if (isgroupby[fi]){
-				cLineVar var = ncFile.addLineVar(varnames[fi], vartypes[fi], vardims);
-				//var.add_long_name(fieldname);
+				cLineVar var = ncFile.addLineVar(varnames[fi], vartypes[fi], vardims);				
 				var.add_original_name(fieldname);
 				var.add_units(f.units);
 				var.add_description(f.description);
 			}
 			else{
-				cSampleVar var = ncFile.addSampleVar(varnames[fi], vartypes[fi], vardims);
-				//var.add_long_name(fieldname);
+				cSampleVar var = ncFile.addSampleVar(varnames[fi], vartypes[fi], vardims);				
 				var.add_original_name(fieldname);
-				var.add_units(f.units);	
-				var.add_description(f.description);
+				var.add_units(f.units);
+				var.add_description(f.description);				
+				for (const auto& [key, value] : f.atts) {					
+					std::string s = tolower(key);					
+					var.add_attribute(s, value);
+				}				
 			}			
 			std::string istr = "point";
 			if(isgroupby[fi]) istr = "line";
@@ -309,53 +317,20 @@ public:
 			}			
 			lineindex++;
 		}		
-		
+		add_global_attributes(ncFile);		
 		glog.logmsg( "Conversion complete\n");
 		_GSTPOP_
 		return true;
 	}
 	
-	/*
-	bool add_global_metadata(cGeophysicsNcFile& ncFile, const cMetaDataRecord& m){		
+	bool add_global_attributes(cGeophysicsNcFile& ncFile) {
 		_GSTITEM_
-		for (size_t j = 0; j < m.header.size(); j++){
-			if (m.header[j][0] == '/')continue;
-
-			if (strcasecmp(m.header[j], "geoscience_australia_airborne_survey_project_number") == 0){
-				int pnum = atoi(m.values[j].c_str());
-				ncFile.putAtt(m.header[j].c_str(), ncInt, pnum);
-			}
-			else if (strcasecmp(m.header[j], "nominal_minimum_line_spacing") == 0){
-				std::string s = m.values[j] + " m";
-				ncFile.putAtt(m.header[j].c_str(), s);
-			}
-			else if (strcasecmp(m.header[j], "nominal_maximum_line_spacing") == 0){
-				std::string s = m.values[j] + " m";
-				ncFile.putAtt(m.header[j].c_str(), s);
-			}
-			else if (strcasecmp(m.header[j], "nominal_height_above_ground") == 0){
-				std::string s = m.values[j] + " m";
-				ncFile.putAtt(m.header[j].c_str(), s);
-			}
-			else if (strcasecmp(m.header[j], "nominal_height_above_sealevel") == 0){
-				std::string s = m.values[j] + " m";
-				ncFile.putAtt(m.header[j].c_str(), s);
-			}
-			else if (strcasecmp(m.header[j], "acquisition_start_date") == 0){
-				std::string s = standardize_date(m.values[j]);
-				ncFile.putAtt(m.header[j].c_str(), s);
-			}
-			else if (strcasecmp(m.header[j], "acquisition_end_date") == 0){
-				std::string s = standardize_date(m.values[j]);
-				ncFile.putAtt(m.header[j].c_str(), s);
-			}
-			else{
-				ncFile.putAtt(m.header[j].c_str(), m.values[j].c_str());
-			}
-		}
+		ncFile.putAtt("CreationTime", timestamp());
+		ncFile.putAtt("CreationMethod", "aseggdf2netcdf.exe");
+		ncFile.putAtt("ASEGGDF2SourceDataFile", DatPath);
+		ncFile.putAtt("ASEGGDF2SourceDFNFile", DfnPath);
 		return true;
-	}
-	*/
+	}	
 };
 
 int main(int argc, char** argv)
@@ -378,20 +353,18 @@ int main(int argc, char** argv)
 			return 1;
 		}		
 	}
-	catch (NcException& e)
-	{
+	catch (NcException& e){
 		_GSTPRINT_		
 		glog.logmsg(e.what());
 		glog.logmsg("\n");
 		return 1;
 	}
-	catch (std::exception& e)
-	{
+	catch (std::exception& e){
 		_GSTPRINT_
 		glog.logmsg(e.what());
 		glog.logmsg("\n");
 		return 1;
-	}			
+	}				
 	return 0;
 }
 

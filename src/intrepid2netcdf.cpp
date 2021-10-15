@@ -26,6 +26,7 @@ class cStackTrace gtrace;
 #include "file_utils.h"
 #include "blocklanguage.h"
 #include "intrepid.h"
+#include "streamredirecter.h"
 
 #include "metadata.h"
 #include "csvfile.h"
@@ -41,24 +42,34 @@ class cIntrepidToNetCDFConverter {
 	std::string IntrepiDatabasePath;
 	std::string NCPath;
 	bool OverWriteExistingNcFiles = true;
-	std::string LogFile;	
-
+	
 public:
 
-	cIntrepidToNetCDFConverter(const std::string& intrepiddatabasepath, const std::string& ncfilepath) {
+	cIntrepidToNetCDFConverter(const std::string& intrepiddatabasepath, const std::string& ncfilepath, std::string& commandline) {
 		_GSTITEM_;
 		IntrepiDatabasePath = fixseparator(intrepiddatabasepath);
 		NCPath = fixseparator(ncfilepath);
-		LogFile = NCPath + ".log";
+				
+		std::string LogPath = NCPath + ".log";
+		std::string WLogPath = NCPath + ".warn.log";
+
+		std::ofstream wlog(WLogPath, std::ios::ate);
+		cStreamRedirecter R(wlog, std::cerr);
 		
-		glog.open(LogFile);
-		glog.log("Program %s \n", _PROGRAM_);
-		glog.log("Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
-		glog.log("Working directory %s\n", getcurrentdirectory().c_str());		
+		double t1 = gettime();
+		glog.open(LogPath);
+		glog.logmsg("Program %s starting at %s\n", _PROGRAM_, timestamp().c_str());		
+		glog.logmsg("Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
+		glog.logmsg("%s\n", commandline.c_str());
+		glog.logmsg("Working directory: %s\n", getcurrentdirectory().c_str());		
 		bool status = process();	
 		if (status == false) {
-			glog.logmsg("Error 0: converting %s to %s\n",intrepiddatabasepath.c_str(), ncfilepath.c_str());			
+			std::string msg = strprint("Error 0: converting %s to %s\n", intrepiddatabasepath.c_str(), ncfilepath.c_str()); 
+			glog.logmsg(msg);	
+			std::cerr << msg << std::endl;
 		}
+		double t2 = gettime();
+		glog.logmsg("Elapsed time = %.2lf\n", t2 - t1);		
 		glog.close();		
 	};
 
@@ -79,14 +90,14 @@ public:
 			}
 		}
 
-		glog.log("\nConverting database: %s\n", IntrepiDatabasePath.c_str());
+		glog.logmsg("\nConverting database: %s\n", IntrepiDatabasePath.c_str());
 		bool datasetexists = exists(IntrepiDatabasePath);
 		if (datasetexists == false) {
 			glog.logmsg("Error 1: Database does not exist: %s\n", IntrepiDatabasePath.c_str());
 			return true;
 		}
 
-		glog.log("\nOpening Intrepid database\n");
+		glog.logmsg("\nOpening Intrepid database\n");
 		ILDataset D(IntrepiDatabasePath);
 		if (D.ispointdataset()) {
 			glog.logmsg("Error 2: point databases not supported - skipping %s\n",IntrepiDatabasePath.c_str());
@@ -97,7 +108,7 @@ public:
 			return true;
 		}
 
-		glog.log("\nGetting the line numbers\n");
+		glog.logmsg("\nGetting the line numbers\n");
 		std::string linenumberfieldname;
 		D.getlinenumberfieldname(linenumberfieldname);
 		if (D.fieldexists(linenumberfieldname) == false) {
@@ -119,23 +130,23 @@ public:
 			glog.logmsg("Warning 3: could not determine the Y field in the SurveyInfo file\n");
 		}
 		
-		glog.log("Creating NetCDF file: %s\n",NCPath.c_str());
+		glog.logmsg("Creating NetCDF file: %s\n",NCPath.c_str());
 		cGeophysicsNcFile ncFile(NCPath, NcFile::replace);
 
-		glog.log("\nAdding the line index variable\n");				
+		glog.logmsg("\nAdding the line index variable\n");				
 		std::vector<size_t> count = D.linesamplecount();									
 		ncFile.InitialiseNew(linenumbers, count);			
 		
-		glog.log("\nAdding global attributes\n");
+		glog.logmsg("\nAdding global attributes\n");
 		add_global_attributes(ncFile);
 
-		glog.log("\nAdding groupby varaibles\n");
+		glog.logmsg("\nAdding groupby varaibles\n");
 		add_groupbyline_variables(ncFile, D);
 
-		glog.log("\nAdding indexed varaibles\n");
+		glog.logmsg("\nAdding indexed varaibles\n");
 		add_indexed_variables(ncFile, D);
 
-		glog.log("\nConversion complete\n");
+		glog.logmsg("\nConversion complete\n");
 		return true;
 	}
 
@@ -194,7 +205,7 @@ public:
 				continue;
 			}			
 			
-			glog.log("Converting field %s\n", F.getName().c_str());
+			glog.logmsg("Converting field %s\n", F.getName().c_str());
 			std::vector<NcDim> dims;
 			if (F.nbands() > 1) {
 				std::string dimname = "nbands_" + F.getName();
@@ -270,7 +281,7 @@ public:
 				glog.logmsg("Warning 5: Converting field %s: with STRING datatype to 'int' datatype\n", F.datafilepath().c_str());
 			}
 						
-			glog.log("Converting field %s\n", F.getName().c_str());
+			glog.logmsg("Converting field %s\n", F.getName().c_str());
 			std::vector<NcDim> dims;
 			if (F.nbands() > 1) {
 				std::string dimname = "nbands_" + F.getName();
@@ -372,18 +383,14 @@ public:
 
 int main(int argc, char** argv)
 {
-	_GSTITEM_
-			
-	glog.logmsg("Program %s \n", _PROGRAM_);
-	glog.logmsg("Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
-	glog.logmsg("Working directory %s\n", getcurrentdirectory().c_str());	
-
+	_GSTITEM_				
+	std::string cmdl = commandlinestring(argc, argv);
 	try
 	{
 		if (argc == 3) {
 			std::string dbname = argv[1];
 			std::string ncname = argv[2];
-			cIntrepidToNetCDFConverter C(dbname, ncname);
+			cIntrepidToNetCDFConverter C(dbname, ncname, cmdl);
 			glog.logmsg("Finished\n");
 		}
 		else if (argc == 4) {		
@@ -403,10 +410,9 @@ int main(int argc, char** argv)
 					std::string dbname = dbdir + fpp.directory + fpp.prefix;
 					std::string ncname = ncdir + fpp.directory + fpp.prefix + ".nc";					
 					std::cout << dbname << " " << ncname << std::endl << std::flush;
-					cIntrepidToNetCDFConverter C(dbname, ncname);										
+					cIntrepidToNetCDFConverter C(dbname, ncname, cmdl);										
 				}
-			}
-			glog.logmsg("Finished\n");
+			}			
 		}
 		else {			
 			std::cout << "Usage: " << extractfilename(argv[0]) << " input_database output_ncfile" << std::endl;			

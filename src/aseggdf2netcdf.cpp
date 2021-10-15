@@ -11,16 +11,19 @@ Author: Ross C. Brodie, Geoscience Australia.
 #include <vector>
 #include <limits>
 #include <algorithm>
-
+#include <fstream>
 using namespace netCDF;
 using namespace netCDF::exceptions;
 
-#include <fstream>
+#define _PROGRAM_ "aseggdf2netcdf"
+#define _VERSION_ "1.0"
+
 #include "general_utils.h"
 #include "file_utils.h"
 #include "string_utils.h"
 #include "blocklanguage.h"
 #include "asciicolumnfile.h"
+#include "streamredirecter.h"
 
 #include "csvfile.h"
 #include "geophysics_netcdf.h"
@@ -36,36 +39,38 @@ cStackTrace gtrace;
 #endif
 class cLogger glog; //The instance of the global log file manager
 
-class cASEGGDF2Converter{
-	
+class cASEGGDF2Converter{	
 	std::string DatPath;
 	std::string DatName;
 	std::string DfnPath;	
-	std::string NCPath;
-	std::string LogFile="aseggdf2netcdf.log";
+	std::string NCPath;	
 
 public:
 	
 	
-	cASEGGDF2Converter(const std::string& datpath, const std::string& ncpath, const std::string& controlfile){
+	cASEGGDF2Converter(const std::string& datpath, const std::string& ncpath, const std::string& commandline){
 		_GSTITEM_		
-		cBlock B(controlfile);
-		
+				
 		DatPath = datpath;
 		DatName = extractfilename_noextension(DatPath);
 		DfnPath = extractfiledirectory(DatPath) + DatName + ".dfn";
 		NCPath  = ncpath;
-
-		std::string logfile = B.getstringvalue("LogFile");
+				
+		std::string LogPath = NCPath + ".log";
+		std::string WLogPath = NCPath + ".warn.log";
 		
-		if (isdefined(logfile)) {
-			LogFile = logfile;
-		}
-		glog.open(LogFile);				
-		glog.logmsg("Program starting at %s\n", timestamp().c_str());
-		glog.log(B.get_as_string());
+		std::ofstream wlog(WLogPath, std::ios::ate);
+		cStreamRedirecter R(wlog,std::cerr);
 
-		convert_aseggdf2_file();				
+		double t1 = gettime();
+		glog.open(LogPath);	
+		glog.logmsg("Program %s starting at %s\n", _PROGRAM_, timestamp().c_str());
+		glog.logmsg("Version %s Compiled at %s on %s\n", _VERSION_, __TIME__, __DATE__);
+		glog.logmsg("%s\n", commandline.c_str());
+		glog.logmsg("Working directory: %s\n", getcurrentdirectory().c_str());
+		convert_aseggdf2_file();		
+		double t2 = gettime();
+		glog.logmsg("Elapsed time = %.2lf\n", t2 - t1);
 		glog.close();
 	};
 
@@ -219,7 +224,9 @@ public:
 				}				
 			}
 			else {
-				glog.logmsg("Error unknown field datatype for %s\n", fieldname.c_str());
+				std::string msg = strprint("Error unknown field datatype for %s\n", fieldname.c_str());
+				glog.logmsg(msg);
+				std::cerr << msg << std::endl;
 			}
 
 			if (isgroupby[fi]){
@@ -338,18 +345,15 @@ int main(int argc, char** argv)
 	_GSTITEM_		
 	try
 	{
-		if (argc == 4) {
-			double t1 = gettime();			
+		if (argc == 3) {			
 			std::string datpath = argv[1];
 			std::string ncpath  = argv[2];
-			std::string controlfile = argv[3];
-			cASEGGDF2Converter C(datpath,ncpath,controlfile);
-			double t2 = gettime();
-			glog.logmsg("Elapsed time = %.2lf\n", t2 - t1);
+			std::string cmdl = commandlinestring(argc, argv);
+			cASEGGDF2Converter C(datpath,ncpath,cmdl);
 			return 0;
 		}
 		else {
-			std::cout << "Usage: " << extractfilename(argv[0]) << " datpath ncpath control_file_name" << std::endl;
+			std::cout << "Usage: " << extractfilename(argv[0]) << " datpath ncpath" << std::endl;
 			return 1;
 		}		
 	}

@@ -108,32 +108,34 @@ public:
 		N.getLineNumbers(ln);
 		const size_t nl = N.nlines();
 				
-		std::string xvarname;
-		std::string yvarname;
-		
-		if (N.hasVar("longitude")) {
-			xvarname = "longitude";
+		std::string xvarname;				
+		std::vector<std::string> xcand = { "longitude","longitude_gda94" };
+		for (size_t i = 0; i < xcand.size(); i++) {
+			xvarname = xcand[i];
+			if (N.hasVarCaseInsensitive(xcand[i])) {				
+				xvarname = xcand[i];
+				break;
+			}
 		}
-		else if (N.hasVar("longitude_gda94")) {
-			xvarname = "longitude_gda94";
-		}
-		else {
-			std::string msg = _SRC_ + strprint("\nCould not find field longitude or longitude_gda94 (%s)\n", NCPath.c_str());
+		if(xvarname.size()==0){				
+			std::string msg = _SRC_ + strprint("Could not find field longitude or longitude_gda94 (%s)\n", NCPath.c_str());
 			throw(std::runtime_error(msg));
 		}
 
-		if (N.hasVar("latitude")) {
-			yvarname = "latitude";
+		std::string yvarname;
+		std::vector<std::string> ycand = { "latitude","latitude_gda94" };
+		for (size_t i = 0; i < ycand.size(); i++) {
+			yvarname = ycand[i];
+			if (N.hasVarCaseInsensitive(ycand[i])){				
+				yvarname = ycand[i];
+				break;
+			}
 		}
-		else if (N.hasVar("latitude_gda94")) {
-			yvarname = "latitude_gda94";
-		}
-		else {
-			std::string msg = _SRC_ + strprint("\nCould not find field latitude or latitude_gda94 (%s)\n", NCPath.c_str());
+		if (yvarname.size() == 0) {
+			std::string msg = _SRC_ + strprint("Could not find field latitude or latitude_gda94 (%s)\n", NCPath.c_str());
 			throw(std::runtime_error(msg));
 		}
-		
-		
+
 		std::vector<double> ltype = get_linetype(N);				
 		std::vector<double> lkm0(nl);
 		std::vector<double> lkm2(nl);

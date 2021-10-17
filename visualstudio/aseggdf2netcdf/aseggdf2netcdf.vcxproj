@@ -101,6 +101,7 @@
     <ClCompile Include="..\..\submodules\cpp-utils\src\general_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\submodules\cpp-utils\src\asciicolumnfile.h" />
     <ClInclude Include="..\..\submodules\cpp-utils\src\blocklanguage.h" />
     <ClInclude Include="..\..\submodules\cpp-utils\src\csvfile.h" />
     <ClInclude Include="..\..\submodules\cpp-utils\src\file_utils.h" />

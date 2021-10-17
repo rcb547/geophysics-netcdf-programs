@@ -79,63 +79,6 @@ public:
 		glog.close();					
 	};
 
-	size_t scan_for_line_index(const cAsciiColumnFile& D, std::vector<unsigned int>& line_index_start, std::vector<unsigned int>& line_index_count, std::vector<unsigned int>& line_number)
-	{
-		_GSTITEM_
-		size_t fi = D.fieldindexbyname("line");
-		size_t i1 = D.fields[fi].startchar;
-		size_t i2 = D.fields[fi].endchar();
-
-		unsigned int n = 0;
-		std::ifstream in(DatPath);
-		std::string s;
-
-		int width = (int)(i2 - i1 + 1);
-		unsigned int lastline = 0;
-		size_t nlines = 0;
-		while (std::getline(in, s)){
-			std::string t = s.substr(i1, width);
-			unsigned int lnum = atoi(t.data());
-			if (lnum != lastline){
-				line_number.push_back(lnum);
-				line_index_start.push_back(n);
-				line_index_count.push_back(1);
-				lastline = lnum;
-			}
-			else{
-				line_index_count.back()++;
-			}
-			n++;
-		}
-		return n;
-	}
-
-	std::vector<bool>  scan_for_groupby_fields(const cAsciiColumnFile& D, const std::vector<unsigned int>& line_index_count)
-	{		
-		_GSTITEM_
-		std::vector<bool> groupby(D.fields.size(),true);
-		std::ifstream infile(DatPath);
-		std::string s, t;			
-		int nl = std::min((int)2,(int)line_index_count.size());
-		for (size_t li = 0; li < nl; li++){						
-			std::getline(infile, s);
-			for (size_t si = 1; si < line_index_count[li]; si++){				
-				std::getline(infile, t);
-				for (size_t fi = 0; fi < D.fields.size(); fi++){					
-					if (groupby[fi] == true){						
-						size_t i1 = D.fields[fi].startchar;
-						size_t i2 = D.fields[fi].endchar();
-						size_t width = i2 - i1 + 1;
-						std::string a = s.substr(i1, width);
-						std::string b = t.substr(i1, width);
-						if (a != b) groupby[fi] = false;						
-					}
-				}
-			}
-		}			
-		return groupby;		
-	}
-	
 	bool convert_aseggdf2_file() {
 		_GSTPUSH_
 
@@ -158,12 +101,36 @@ public:
 		std::vector<unsigned int> line_number;
 		std::vector<unsigned int> line_index_start;
 		std::vector<unsigned int> line_index_count;
+
+		int line_field_index = -1;
+		std::string line_field_name = "";
+		std::vector<std::string> cand = { "line", "linenumber", "line_number", "flightline", "fltline" };
+		glog.logmsg("Determining line field name\n");
+		for (size_t i = 0; i < cand.size(); i++) {
+			glog.logmsg("\ttrying %s\n",cand[i].c_str());
+			line_field_index = D.fieldindexbyname(cand[i]);
+			if (line_field_index >= 0) {
+				line_field_name = D.fields[line_field_index].name;
+				break;
+			}
+		}
+		
+		if (line_field_index < 0) {
+			std::string msg;
+			msg += strprint("Could not determin the line number field'\n");						
+			throw(std::runtime_error(msg));
+		}
+		else {
+			glog.logmsg("Using %s as the 'line number' field\n", line_field_name.c_str());
+		}
+		
 		glog.logmsg("Scanning for line index\n");
-		size_t npoints = scan_for_line_index(D, line_index_start, line_index_count, line_number);
-		glog.logmsg("Total number of points is %lu\n", npoints);
+		size_t npoints = D.scan_for_line_index(line_field_index, line_index_start, line_index_count, line_number);
+		glog.logmsg("Total number of points is %d\n", (int)npoints);
+		glog.logmsg("Total number of lines is %d\n", (int)line_index_start.size());
 
 		glog.logmsg("Scanning for groupby fields\n");
-		std::vector<bool> isgroupby = scan_for_groupby_fields(D, line_index_count);
+		std::vector<bool> isgroupby = D.scan_for_groupby_fields(line_index_count);
 
 		bool status = exists(extractfiledirectory(NCPath));
 		if (status==false){
@@ -180,20 +147,45 @@ public:
 		glog.logmsg("Pre processing fields\n");
 		std::vector<nc_type> vartypes(D.fields.size());
 		std::vector<std::string> varnames(D.fields.size());
+		bool reported_nameswap = false;
 		for (size_t fi = 0; fi < D.fields.size(); fi++){
 			cAsciiColumnField& f = D.fields[fi];
+			
+			//std::cout << f.name << std::endl;
+			if (f.name == line_field_name) {
+				std::string msg;
+				msg += strprint("Will skip processing field %3zu - %s (already in index)\n", fi, f.name.c_str());
+				std::cout << msg << std::endl;
+				continue;
+			}
+
 			if (f.longname.size() == 0) {
 				varnames[fi] = f.name;
 			}
 			else {
 				varnames[fi] = f.longname;
+				if (reported_nameswap == false) {
+					std::string msg;
+					msg += strprint("Warning: There are NAME=value pairs in the .dfn file'\n");
+					msg += strprint("\tUsing those NAMES instead of the label immediately after the RT=;\n");
+					std::cerr << msg << std::endl;
+					reported_nameswap = true;
+					//throw(std::runtime_error(msg));
+				}
 			}
-			std::string& fieldname = varnames[fi];			
-			if (fieldname == DN_LINE || fieldname == "Line"){
-				glog.logmsg("Skip processing field %3zu - %s (already in index)\n", fi, fieldname.c_str());
-				continue;
-			}						
-						
+
+			static const char space = ' ';
+			size_t found = varnames[fi].find_first_of(space);
+			if (found != std::string::npos) {
+				std::string msg;
+				msg += strprint("Error: There are spaces are in the variable name '%s'\n", varnames[fi].c_str());
+				msg += strprint("\t The value 'NAME=value' pair in the .dfn file has got spaces in it\n");
+				msg += strprint("\t If the NAMES are really descriptions, change the NAME=... to DESC=... instead\n");
+				std::cerr << msg << std::endl;
+				throw(std::runtime_error(msg));
+			}
+
+			std::string& fieldname = varnames[fi];															
 			size_t nbands = f.nbands;
 			std::vector<NcDim> vardims;
 			if (nbands > 1){				
@@ -224,9 +216,9 @@ public:
 				}				
 			}
 			else {
-				std::string msg = strprint("Error unknown field datatype for %s\n", fieldname.c_str());
-				glog.logmsg(msg);
+				std::string msg = strprint("Error unknown field datatype for %s\n", fieldname.c_str());				
 				std::cerr << msg << std::endl;
+				throw(std::runtime_error(msg));
 			}
 
 			if (isgroupby[fi]){
@@ -257,17 +249,28 @@ public:
 		std::vector<std::vector<int>>    intfields;
 		std::vector<std::vector<double>> dblfields;
 		size_t lineindex = 0;
+		D.rewind();
 		glog.logmsg("Processing lines\n");
-		while (size_t nsamples = D.readnextgroup(fi_line, intfields, dblfields)){			
+		size_t nsamples;
+		while (nsamples = D.readnextgroup(fi_line, intfields, dblfields)){									
+			if (line_index_count[lineindex] != nsamples) {				
+				std::string msg;
+				msg += strprint("Error: number of samples read in from line does not match the index\n");
+				msg += strprint("\tindex: %d and read in: %d\n", line_index_count[lineindex], nsamples);
+				std::cerr << msg << std::endl;
+				throw(std::runtime_error(msg));
+			}
+
 			glog.logmsg("Processing line index:%zu linenumber:%u\n",lineindex+1,line_number[lineindex]);
 			for (size_t fi = 0; fi < D.fields.size(); fi++){				
-				std::string& fieldname = varnames[fi];
-				//std::cout << D.fields[fi].name << std::endl;				
-				if (fieldname == DN_LINE || fieldname == "Line") continue;
+				cAsciiColumnField& f = D.fields[fi];
+				std::string& vname = varnames[fi];				
+				//std::cout << f.name << std::endl;								
+				if (f.name == line_field_name) continue;
 
 				size_t nbands = D.fields[fi].nbands;
 
-				NcVar var = ncFile.getSampleVar(fieldname);
+				NcVar var = ncFile.getSampleVar(vname);
 					
 				std::vector<size_t> startp(2);
 				std::vector<size_t> countp(2);								

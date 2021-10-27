@@ -93,10 +93,10 @@ public:
 		}
 
 		glog.logmsg("Opening data file %s\n",DatPath.c_str());
-		cAsciiColumnFile D(DatPath);
+		cAsciiColumnFile AF(DatPath);
 
 		glog.logmsg("Parsing ASEGGDF2 header\n");
-		D.read_dfn(DfnPath);
+		AF.read_dfn(DfnPath);
 						
 		std::vector<unsigned int> line_number;
 		std::vector<unsigned int> line_index_start;
@@ -108,9 +108,9 @@ public:
 		glog.logmsg("Determining line field name\n");
 		for (size_t i = 0; i < cand.size(); i++) {
 			glog.logmsg("\ttrying %s\n",cand[i].c_str());
-			line_field_index = D.fieldindexbyname(cand[i]);
+			line_field_index = AF.fieldindexbyname(cand[i]);
 			if (line_field_index >= 0) {
-				line_field_name = D.fields[line_field_index].name;
+				line_field_name = AF.fields[line_field_index].name;
 				break;
 			}
 		}
@@ -125,12 +125,12 @@ public:
 		}
 		
 		glog.logmsg("Scanning for line index\n");
-		size_t npoints = D.scan_for_line_index(line_field_index, line_index_start, line_index_count, line_number);
+		size_t npoints = AF.scan_for_line_index(line_field_index, line_index_start, line_index_count, line_number);
 		glog.logmsg("Total number of points is %d\n", (int)npoints);
 		glog.logmsg("Total number of lines is %d\n", (int)line_index_start.size());
 
 		glog.logmsg("Scanning for groupby fields\n");
-		std::vector<bool> isgroupby = D.scan_for_groupby_fields(line_index_count);
+		std::vector<bool> isgroupby = AF.scan_for_groupby_fields(line_index_count);
 
 		bool status = exists(extractfiledirectory(NCPath));
 		if (status==false){
@@ -145,11 +145,11 @@ public:
 				
 		//Pre process the fields
 		glog.logmsg("Pre processing fields\n");
-		std::vector<nc_type> vartypes(D.fields.size());
-		std::vector<std::string> varnames(D.fields.size());
+		std::vector<nc_type> vartypes(AF.fields.size());
+		std::vector<std::string> varnames(AF.fields.size());
 		bool reported_nameswap = false;
-		for (size_t fi = 0; fi < D.fields.size(); fi++){
-			cAsciiColumnField& f = D.fields[fi];
+		for (size_t fi = 0; fi < AF.fields.size(); fi++){
+			cAsciiColumnField& f = AF.fields[fi];
 			
 			//std::cout << f.name << std::endl;
 			if (f.name == line_field_name) {
@@ -244,15 +244,16 @@ public:
 			glog.logmsg("field index:%zu name:%s datatype:%s bands:%zu indexing:%s units:%s\n", fi + 1, fieldname.c_str(), tname.c_str(),nbands,istr.c_str(),f.units.c_str());
 		}		
 
-		size_t fi_line = D.fieldindexbyname("line");				
+		size_t fi_line = AF.fieldindexbyname("line");				
 
 		std::vector<std::vector<int>>    intfields;
 		std::vector<std::vector<double>> dblfields;
 		size_t lineindex = 0;
-		D.rewind();
+		AF.rewind();		
+		AF.clear_currentrecord();
 		glog.logmsg("Processing lines\n");
 		size_t nsamples;
-		while (nsamples = D.readnextgroup(fi_line, intfields, dblfields)){									
+		while (nsamples = AF.readnextgroup(fi_line, intfields, dblfields)){									
 			if (line_index_count[lineindex] != nsamples) {				
 				std::string msg;
 				msg += strprint("Error: number of samples read in from line does not match the index\n");
@@ -262,13 +263,13 @@ public:
 			}
 
 			glog.logmsg("Processing line index:%zu linenumber:%u\n",lineindex+1,line_number[lineindex]);
-			for (size_t fi = 0; fi < D.fields.size(); fi++){				
-				cAsciiColumnField& f = D.fields[fi];
+			for (size_t fi = 0; fi < AF.fields.size(); fi++){				
+				cAsciiColumnField& f = AF.fields[fi];
 				std::string& vname = varnames[fi];				
 				//std::cout << f.name << std::endl;								
 				if (f.name == line_field_name) continue;
 
-				size_t nbands = D.fields[fi].nbands;
+				size_t nbands = AF.fields[fi].nbands;
 
 				NcVar var = ncFile.getSampleVar(vname);
 					
@@ -291,7 +292,7 @@ public:
 						countp[1] = 1;
 					}
 															
-					if (D.fields[fi].isinteger()){
+					if (AF.fields[fi].isinteger()){
 						std::vector<int> data(nactive);
 						int mv;
 						cGeophysicsVar gv(&ncFile, var);
@@ -301,7 +302,7 @@ public:
 							if (!isdefined(val)) {
 								val = mv;
 							}
-							else if (val == D.fields[fi].nullvalue()){
+							else if (val == AF.fields[fi].nullvalue()){
 								val = mv;
 							}
 						}						
@@ -317,7 +318,7 @@ public:
 							if (!isdefined(val)) {
 								val = mv;
 							}
-							else if (val == D.fields[fi].nullvalue()){
+							else if (val == AF.fields[fi].nullvalue()){
 								val = mv; 
 							}
 						}						

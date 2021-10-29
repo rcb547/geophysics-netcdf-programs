@@ -6,18 +6,20 @@ SHELL = /bin/sh
 
 includes  = -I$(srcdir)
 includes += -I$(cpputilssrc)
+includes += -I$(csv_include)
+includes += -I$(geophysics_netcdf_include)
 includes += -I$(marray_include)
 
 cxxflags  += -DUSEGLOBALSTACKTRACE
-cxxflags  += -D_MPI_ENABLED
+#cxxflags  += -D_MPI_ENABLED
 
-libs       =  -lnetcdf -lnetcdf_c++4 -lgdal -lCGAL_Core
+libs       =  -lstdc++fs -lnetcdf -lnetcdf_c++4 -lgdal
 executable =  $(exedir)/aseggdf2netcdf.exe
 
 objects  = $(cpputilssrc)/general_utils.o
 objects += $(cpputilssrc)/file_utils.o
-objects += $(cpputilssrc)/gdal_utils.o
-objects += $(cpputilssrc)/cgal_utils.o
+#objects += $(cpputilssrc)/gdal_utils.o
+#objects += $(cpputilssrc)/cgal_utils.o
 objects += $(srcdir)/aseggdf2netcdf.o
 
 %.o : %.cpp

@@ -6,9 +6,10 @@ echo '========================================================================'
 export compiler=$1
 export makemode=$2
 export srcdir='../src'
+export geophysics_netcdf_include='../submodules/geophysics-netcdf/src'
 export cpputilssrc='../submodules/cpp-utils/src'
-export marray_include='../submodules/marray/include/andres'
-
+export marray_include='../submodules/geophysics-netcdf/submodules/marray/include/andres'
+export csv_include='../submodules/csv-parser/single_include'
 
 if [ $compiler == 'intel' ] ; then
 	echo 'Building with Intel compiler'
@@ -18,7 +19,7 @@ if [ $compiler == 'intel' ] ; then
 	export exedir='../bin/gadi/intel'
 elif [ $compiler == 'gnu' ] ; then
 	echo 'Building with GCC compiler'
-	module load gcc/system
+	module load gcc/11.1.0
 	export cxx=g++
 	export cxxflags='-std=c++17 -O3 -Wall -Wno-unknown-pragmas'
 	export exedir='../bin/gadi/gnu'
@@ -55,8 +56,7 @@ echo HAVE_GDAL = $HAVE_GDAL
 echo HAVE_CGAL = $HAVE_CGAL
 echo ---------------------------------------
 
+make -f aseggdf2netcdf.make $makemode
 make -f intrepid2netcdf.make $makemode
 make -f geophysicsnc2shape.make $makemode
-#make -f aseggdf2netcdf.make $makemode
-#make -f test_geophysics_netcdf_reader.make $makemode
 

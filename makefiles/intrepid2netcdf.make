@@ -5,14 +5,15 @@ SHELL = /bin/sh
 .DEFAULT_GOAL := allclean
 
 includes  = -I$(srcdir)
+includes += -I$(geophysics_netcdf_include)
 includes += -I$(cpputilssrc)
 includes += -I$(marray_include)
 
 
 cxxflags  += -DUSEGLOBALSTACKTRACE
-cxxflags  += -D_MPI_ENABLED
+#cxxflags  += -D_MPI_ENABLED
 
-libs       =  -lnetcdf -lnetcdf_c++4
+libs       =  -lstdc++fs -lnetcdf -lnetcdf_c++4
 
 executable =  $(exedir)/intrepid2netcdf.exe
 objects  = $(cpputilssrc)/general_utils.o

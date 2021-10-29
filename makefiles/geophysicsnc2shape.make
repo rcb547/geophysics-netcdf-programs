@@ -5,14 +5,16 @@ SHELL = /bin/sh
 .DEFAULT_GOAL := allclean
 
 includes  = -I$(srcdir)
+includes += -I$(geophysics_netcdf_include)
 includes += -I$(cpputilssrc)
 includes += -I$(marray_include)
 
 
-cxxflags  += -DUSEGLOBALSTACKTRACE
-cxxflags  += -D_MPI_ENABLED
 
-libs       =  -lnetcdf -lnetcdf_c++4
+cxxflags  += -DUSEGLOBALSTACKTRACE
+#cxxflags  += -D_MPI_ENABLED
+
+libs       =  -lstdc++fs -lnetcdf -lnetcdf_c++4
 
 executable =  $(exedir)/geophysicsnc2shape.exe
 objects  = $(cpputilssrc)/general_utils.o

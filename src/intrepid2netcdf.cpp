@@ -400,7 +400,6 @@ int main(int argc, char** argv)
 			std::ifstream file(listfile);
 			addtrailingseparator(dbdir);
 			addtrailingseparator(ncdir);
-			int k = 0;
 			while (file.eof() == false) {
 				std::string db;
 				file >> db;

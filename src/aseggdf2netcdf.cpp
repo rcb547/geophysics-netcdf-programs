@@ -200,7 +200,7 @@ public:
 					std::vector<unsigned int> b = increment((unsigned int)nbands, (unsigned int)0, (unsigned int)1);
 					dimband = ncFile.addDimVar(dimname, b);
 				}
-				bool status = dimband.isNull();
+				dimband.isNull();
 				vardims.push_back(dimband);
 			}
 			
@@ -253,7 +253,7 @@ public:
 		AF.clear_currentrecord();
 		glog.logmsg("Processing lines\n");
 		size_t nsamples;
-		while (nsamples = AF.readnextgroup(fi_line, intfields, dblfields)){									
+		while ((nsamples = AF.readnextgroup(fi_line, intfields, dblfields))){
 			if (line_index_count[lineindex] != nsamples) {				
 				std::string msg;
 				msg += strprint("Error: number of samples read in from line does not match the index\n");

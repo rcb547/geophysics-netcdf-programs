@@ -118,7 +118,7 @@ public:
 		if (line_field_index < 0) {
 			std::string msg;
 			msg += strprint("Could not determin the line number field'\n");						
-			throw(std::runtime_error(msg));
+			glog.errormsg(_SRC_+msg);
 		}
 		else {
 			glog.logmsg("Using %s as the 'line number' field\n", line_field_name.c_str());
@@ -150,8 +150,7 @@ public:
 		bool reported_nameswap = false;
 		for (size_t fi = 0; fi < AF.fields.size(); fi++){
 			cAsciiColumnField& f = AF.fields[fi];
-			
-			//std::cout << f.name << std::endl;
+						
 			if (f.name == line_field_name) {
 				std::string msg;
 				msg += strprint("Will skip processing field %3zu - %s (already in index)\n", fi, f.name.c_str());
@@ -159,18 +158,18 @@ public:
 				continue;
 			}
 
-			if (f.longname.size() == 0) {
+			std::string longname = f.longname();						
+			if (longname.size() == 0) {
 				varnames[fi] = f.name;
 			}
 			else {
-				varnames[fi] = f.longname;
+				varnames[fi] = longname;
 				if (reported_nameswap == false) {
 					std::string msg;
 					msg += strprint("Warning: There are NAME=value pairs in the .dfn file'\n");
 					msg += strprint("\tUsing those NAMES instead of the label immediately after the RT=;\n");
 					std::cerr << msg << std::endl;
-					reported_nameswap = true;
-					//throw(std::runtime_error(msg));
+					reported_nameswap = true;					
 				}
 			}
 
@@ -182,18 +181,17 @@ public:
 				msg += strprint("\t The value 'NAME=value' pair in the .dfn file has got spaces in it\n");
 				msg += strprint("\t If the NAMES are really descriptions, change the NAME=... to DESC=... instead\n");
 				std::cerr << msg << std::endl;
-				throw(std::runtime_error(msg));
+				glog.errormsg(_SRC_+msg);
 			}
 
 			std::string& fieldname = varnames[fi];															
 			size_t nbands = f.nbands;
 			std::vector<NcDim> vardims;
-			if (nbands > 1){				
-				std::string dimname = f.atts["second_dimension_name"];
-				if (dimname.size() == 0) {
-					std::string msg = strprint("Error 1: Multiband field %s has no SECOND_DIMENSION_NAME=... tag in .dfn file\n", varnames[fi].c_str());
-					glog.logmsg(msg);
-					throw(std::runtime_error(msg));
+			if (nbands > 1){								
+				std::string dimname = f.get_att("second_dimension_name");
+				if (dimname.size()==0) {
+					std::string msg = strprint("Error 1: Multiband field %s has no SECOND_DIMENSION_NAME=... tag in .dfn file\n", varnames[fi].c_str());										
+					glog.errormsg(_SRC_+msg);
 				}
 				NcDim dimband = ncFile.getDim(dimname);
 				if (dimband.isNull()){
@@ -218,30 +216,34 @@ public:
 			else {
 				std::string msg = strprint("Error unknown field datatype for %s\n", fieldname.c_str());				
 				std::cerr << msg << std::endl;
-				throw(std::runtime_error(msg));
+				glog.errormsg(_SRC_+msg);
 			}
 
 			if (isgroupby[fi]){
 				cLineVar var = ncFile.addLineVar(varnames[fi], vartypes[fi], vardims);				
 				var.add_original_name(fieldname);
-				var.add_units(f.units);
-				var.add_description(f.description);
+				var.add_units(f.units());
+				var.add_description(f.description());
+				for (const auto& [key, value] : f.atts) {
+					std::string s = tolower(key);
+					var.add_attribute(s, value);
+				}
 			}
 			else{
 				cSampleVar var = ncFile.addSampleVar(varnames[fi], vartypes[fi], vardims);				
 				var.add_original_name(fieldname);
-				var.add_units(f.units);
-				var.add_description(f.description);				
+				var.add_units(f.units());
+				var.add_description(f.description());				
 				for (const auto& [key, value] : f.atts) {					
 					std::string s = tolower(key);					
 					var.add_attribute(s, value);
-				}				
+				}
 			}			
 			std::string istr = "point";
 			if(isgroupby[fi]) istr = "line";
 
 			std::string tname = NcType(vartypes[fi]).getTypeClassName();			
-			glog.logmsg("field index:%zu name:%s datatype:%s bands:%zu indexing:%s units:%s\n", fi + 1, fieldname.c_str(), tname.c_str(),nbands,istr.c_str(),f.units.c_str());
+			glog.logmsg("field index:%zu name:%s datatype:%s bands:%zu indexing:%s units:%s\n", fi + 1, fieldname.c_str(), tname.c_str(),nbands,istr.c_str(),f.units().c_str());
 		}		
 
 		size_t fi_line = AF.fieldindexbyname("line");				
@@ -259,7 +261,7 @@ public:
 				msg += strprint("Error: number of samples read in from line does not match the index\n");
 				msg += strprint("\tindex: %d and read in: %d\n", line_index_count[lineindex], nsamples);
 				std::cerr << msg << std::endl;
-				throw(std::runtime_error(msg));
+				glog.errormsg(_SRC_+msg);
 			}
 
 			glog.logmsg("Processing line index:%zu linenumber:%u\n",lineindex+1,line_number[lineindex]);
@@ -302,7 +304,7 @@ public:
 							if (!isdefined(val)) {
 								val = mv;
 							}
-							else if (val == AF.fields[fi].nullvalue()){
+							else if (val == AF.fields[fi].nullvalue<int>()){
 								val = mv;
 							}
 						}						
@@ -318,7 +320,7 @@ public:
 							if (!isdefined(val)) {
 								val = mv;
 							}
-							else if (val == AF.fields[fi].nullvalue()){
+							else if (val == AF.fields[fi].nullvalue<double>()){
 								val = mv; 
 							}
 						}						
@@ -363,14 +365,23 @@ int main(int argc, char** argv)
 	}
 	catch (NcException& e){
 		_GSTPRINT_		
-		glog.logmsg(e.what());
-		glog.logmsg("\n");
+		std::cerr << e.what();
+		//glog.logmsg(e.what());
+		//glog.logmsg("\n");
+		return 1;
+	}
+	catch (const std::runtime_error& e) {
+		_GSTPRINT_
+		std::cerr << e.what();
+		//glog.logmsg(e.what());
+		//glog.logmsg("\n");
 		return 1;
 	}
 	catch (std::exception& e){
 		_GSTPRINT_
-		glog.logmsg(e.what());
-		glog.logmsg("\n");
+		std::cerr << e.what();
+		//glog.logmsg(e.what());
+		//glog.logmsg("\n");
 		return 1;
 	}				
 	return 0;

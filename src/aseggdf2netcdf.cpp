@@ -150,11 +150,20 @@ public:
 		bool reported_nameswap = false;
 		for (size_t fi = 0; fi < AF.fields.size(); fi++){
 			cAsciiColumnField& f = AF.fields[fi];
-						
+								
+			if (f.ischar()) {
+				std::string msg;
+				msg += strprint("Skip processing field %3zu - %s (is a char field)\n", fi, f.name.c_str());
+				std::cout << msg << std::endl;				
+				glog.logmsg(msg);
+				continue;
+			}
+
 			if (f.name == line_field_name) {
 				std::string msg;
-				msg += strprint("Will skip processing field %3zu - %s (already in index)\n", fi, f.name.c_str());
+				msg += strprint("Skip processing field %3zu - %s (already in index)\n", fi, f.name.c_str());
 				std::cout << msg << std::endl;
+				glog.logmsg(msg);
 				continue;
 			}
 
@@ -269,7 +278,12 @@ public:
 				cAsciiColumnField& f = AF.fields[fi];
 				std::string& vname = varnames[fi];				
 				//std::cout << f.name << std::endl;								
-				if (f.name == line_field_name) continue;
+				if (f.name == line_field_name) {
+					continue;
+				}
+				if (f.ischar()) {
+					continue;
+				}
 
 				size_t nbands = AF.fields[fi].nbands;
 

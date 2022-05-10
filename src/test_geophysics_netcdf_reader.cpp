@@ -342,7 +342,7 @@ void test_mpi(int argc, char** argv) {
 	cSampleVar var = nc.getSampleVar("newvar");
 	for (size_t li = 0; li < nc.nlines(); li++) {
 		if ((li%mpisize) == mpirank){
-			float v = (mpirank + 1) * 10000 + li;
+			float v = (float)((mpirank + 1) * 10000 + li);
 			std::vector<float> vals(nc.nlinesamples(li), v);
 			var.putLine(li, vals);
 			std::cout << "Rank " << mpirank << " Lineindex " << li << " v=" << v << std::endl;						

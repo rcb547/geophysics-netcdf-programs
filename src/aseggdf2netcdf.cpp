@@ -97,6 +97,15 @@ public:
 
 		glog.logmsg("Parsing ASEGGDF2 header\n");
 		AF.read_dfn(DfnPath);
+
+		//Force change attribute name "desc" or "DESC" to "description"
+		for (size_t i = 0; i < AF.fields.size(); i++) {
+			for (size_t j = 0; j < AF.fields[i].atts.size(); j++) {
+				if (tolower(AF.fields[i].atts[j].first) == "desc") {
+					AF.fields[i].atts[j].first = "description";
+				}
+			}
+		}
 						
 		std::vector<unsigned int> line_number;
 		std::vector<unsigned int> line_index_start;
@@ -228,26 +237,23 @@ public:
 				glog.errormsg(_SRC_+msg);
 			}
 
-			if (isgroupby[fi]){
-				cLineVar var = ncFile.addLineVar(varnames[fi], vartypes[fi], vardims);				
-				var.add_original_name(fieldname);
-				var.add_units(f.units());
-				var.add_description(f.description());
-				for (const auto& [key, value] : f.atts) {
-					std::string s = tolower(key);
-					var.add_attribute(s, value);
-				}
+			cGeophysicsVar gv;
+			if (isgroupby[fi]) {
+				gv = ncFile.addLineVar(varnames[fi], vartypes[fi], vardims);				
 			}
-			else{
-				cSampleVar var = ncFile.addSampleVar(varnames[fi], vartypes[fi], vardims);				
-				var.add_original_name(fieldname);
-				var.add_units(f.units());
-				var.add_description(f.description());				
-				for (const auto& [key, value] : f.atts) {					
-					std::string s = tolower(key);					
-					var.add_attribute(s, value);
+			else {
+				gv = ncFile.addSampleVar(varnames[fi], vartypes[fi], vardims);				
+			}
+			gv.add_original_dataset_fieldname(fieldname);
+			
+			for (const auto& [key, value] : f.atts) {
+				std::string s = tolower(key);
+				if (s != "null") {
+					//null is not relevant in the netcdf file
+					gv.add_attribute(s, value);
 				}
 			}			
+			
 			std::string istr = "point";
 			if(isgroupby[fi]) istr = "line";
 

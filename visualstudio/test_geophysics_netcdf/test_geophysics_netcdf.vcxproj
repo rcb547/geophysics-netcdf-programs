@@ -13,8 +13,9 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A18BC83C-0079-41A6-B33D-52162C9EA6C9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>test_geophysics_netcdf_reader</RootNamespace>
+    <RootNamespace>test_geophysics_netcdf</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>test_geophysics_netcdf</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -100,7 +101,7 @@
     <PostBuildEvent />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\test_geophysics_netcdf_reader.cpp" />
+    <ClCompile Include="..\..\src\test_geophysics_netcdf.cpp" />
     <ClCompile Include="..\..\submodules\cpp-utils\src\file_utils.cpp" />
     <ClCompile Include="..\..\submodules\cpp-utils\src\general_utils.cpp" />
   </ItemGroup>

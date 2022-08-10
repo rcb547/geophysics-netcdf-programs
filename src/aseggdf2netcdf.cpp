@@ -99,13 +99,13 @@ public:
 		AF.read_dfn(DfnPath);
 
 		//Force change attribute name "desc" or "DESC" to "description"
-		for (size_t i = 0; i < AF.fields.size(); i++) {
-			for (size_t j = 0; j < AF.fields[i].atts.size(); j++) {
-				if (tolower(AF.fields[i].atts[j].first) == "desc") {
-					AF.fields[i].atts[j].first = "description";
-				}
-			}
-		}
+		//for (size_t i = 0; i < AF.fields.size(); i++) {
+		//	for (size_t j = 0; j < AF.fields[i].atts.size(); j++) {
+		//		if (tolower(AF.fields[i].atts[j].first) == "desc") {
+		//			AF.fields[i].atts[j].first = "description";
+		//		}
+		//	}
+		//}
 						
 		std::vector<unsigned int> line_number;
 		std::vector<unsigned int> line_index_start;
@@ -159,18 +159,26 @@ public:
 		bool reported_nameswap = false;
 		for (size_t fi = 0; fi < AF.fields.size(); fi++){
 			cAsciiColumnField& f = AF.fields[fi];
-								
-			if (f.ischar()) {
+										
+			if (f.name == line_field_name) {
 				std::string msg;
-				msg += strprint("Skip processing field %3zu - %s (is a char field)\n", fi, f.name.c_str());
-				std::cout << msg << std::endl;				
+				msg += strprint("Skip processing field %3zu - %s (already in index)\n", fi, f.name.c_str());
+				std::cout << msg << std::endl;
+				glog.logmsg(msg);
+				continue;
+			}
+			
+			if (tolower(f.name) == "rt") {
+				std::string msg;
+				msg += strprint("Skip processing field %3zu - %s (is a RECORD_TYPR field)\n", fi, f.name.c_str());
+				std::cout << msg << std::endl;
 				glog.logmsg(msg);
 				continue;
 			}
 
-			if (f.name == line_field_name) {
+			if (tolower(f.name) == "fltline") {
 				std::string msg;
-				msg += strprint("Skip processing field %3zu - %s (already in index)\n", fi, f.name.c_str());
+				msg += strprint("Skip processing field %3zu - %s (is the GEOSOFT fltline field)\n", fi, f.name.c_str());
 				std::cout << msg << std::endl;
 				glog.logmsg(msg);
 				continue;
@@ -246,11 +254,10 @@ public:
 			}
 			gv.add_original_dataset_fieldname(fieldname);
 			
-			for (const auto& [key, value] : f.atts) {
-				std::string s = tolower(key);
-				if (s != "null") {
+			for (const auto& [key, value] : f.atts) {				
+				if (tolower(key) != "null") {
 					//null is not relevant in the netcdf file
-					gv.add_attribute(s, value);
+					gv.add_attribute(key, value);
 				}
 			}			
 			
@@ -284,12 +291,23 @@ public:
 				cAsciiColumnField& f = AF.fields[fi];
 				std::string& vname = varnames[fi];				
 				//std::cout << f.name << std::endl;								
+				
 				if (f.name == line_field_name) {
 					continue;
 				}
+
 				if (f.ischar()) {
 					continue;
 				}
+
+				if (tolower(f.name) == "rt") {					
+					continue;
+				}
+
+				if (tolower(f.name) == "fltline") {					
+					continue;
+				}
+
 
 				size_t nbands = AF.fields[fi].nbands;
 

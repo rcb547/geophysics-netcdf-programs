@@ -197,9 +197,20 @@ public:
 		size_t fi = 0;
 		for (auto it = D.Fields.begin(); it != D.Fields.end(); ++it) {
 			fi++;
-			ILField& F = *it;
-			if (F.isgroupbyline() == false) continue;			
+			ILField& F = *it;			
+			if (F.isgroupbyline() == false) continue;						
 			if (F.getName() == linenumberfield) continue;
+			
+			if (tolower(F.getName()) == "rt") {
+				glog.logmsg("Warning 7: skipping field %s: this appears to be a RECORD_TYPE field\n", F.datafilepath().c_str());
+				continue;
+			}
+
+			if (tolower(F.getName()) == "fltline") {
+				glog.logmsg("Warning 8: skipping field %s: this appears to be a GEOSOFT flight line field\n", F.datafilepath().c_str());
+				continue;
+			}
+
 			if (F.getTypeId() == IDataType::ID::UNKNOWN) {
 				glog.logmsg("Warning 4: skipping field %s: unsupported datatype\n", F.datafilepath().c_str());
 				continue;
@@ -272,6 +283,16 @@ public:
 
 			if (F.getTypeId() == IDataType::ID::UNKNOWN) {
 				glog.logmsg("Warning 4: skipping field %s: unsupported datatype\n", F.datafilepath().c_str());
+				continue;
+			}
+
+			if (tolower(F.getName()) == "rt") {
+				glog.logmsg("Warning 7: skipping field %s: this appears to be a RECORD_TYPE field\n", F.datafilepath().c_str());
+				continue;
+			}
+
+			if (tolower(F.getName()) == "fltline") {
+				glog.logmsg("Warning 8: skipping field %s: this appears to be a GEOSOFT flight line field\n", F.datafilepath().c_str());
 				continue;
 			}
 

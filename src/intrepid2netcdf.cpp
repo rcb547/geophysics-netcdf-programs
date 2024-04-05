@@ -26,12 +26,12 @@ class cStackTrace gtrace;
 #include "file_utils.h"
 #include "blocklanguage.h"
 #include "intrepid.h"
-#include "streamredirecter.h"
 
 #include "metadata.h"
 #include "csvfile.h"
 #include "logger.h"
-#include "geophysics_netcdf.h"
+#include "streamredirecter.h"
+#include "geophysics_netcdf.hpp"
 #ifdef HAVE_GDAL
 	#include "crs.h"
 #endif

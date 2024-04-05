@@ -1,6 +1,10 @@
 # Build directories
 build*/
 
+temp-*.sh
+temp-*.bat
+temp-*.txt
+
 # Compiled Object files
 *.slo
 *.lo

@@ -27,7 +27,7 @@ class cStackTrace gtrace;
 #include "logger.h"
 #include "ogr_utils.h"
 #include "gdal_utils.h"
-#include "geophysics_netcdf.h"
+#include "geophysics_netcdf.hpp"
 
 #ifdef HAVE_GDAL
 	#include "crs.h"

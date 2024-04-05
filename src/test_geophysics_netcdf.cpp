@@ -29,7 +29,7 @@ using namespace netCDF::exceptions;
 #include "file_utils.h"
 #include "vector_utils.h"
 #include "file_formats.h"
-#include "geophysics_netcdf.h"
+#include "geophysics_netcdf.hpp"
 #include "stopwatch.h"
 #include "logger.h"
 

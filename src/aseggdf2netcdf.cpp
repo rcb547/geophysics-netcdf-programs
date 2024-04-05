@@ -26,7 +26,7 @@ using namespace netCDF::exceptions;
 #include "streamredirecter.h"
 
 #include "csvfile.h"
-#include "geophysics_netcdf.h"
+#include "geophysics_netcdf.hpp"
 
 #include "stacktrace.h"
 #ifdef USEGLOBALSTACKTRACE	
@@ -96,7 +96,7 @@ public:
 		cAsciiColumnFile AF(DatPath);
 
 		glog.logmsg("Parsing ASEGGDF2 header\n");
-		AF.read_dfn(DfnPath);
+		AF.parse_dfn_header(DfnPath);
 
 		//Force change attribute name "desc" or "DESC" to "description"
 		//for (size_t i = 0; i < AF.fields.size(); i++) {

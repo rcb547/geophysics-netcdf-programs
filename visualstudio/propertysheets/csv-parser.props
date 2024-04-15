@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>..\..\submodules\csv-parser\single_include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\submodules\cpp-utils\submodules\csv-parser\single_include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup />
   <ItemGroup />

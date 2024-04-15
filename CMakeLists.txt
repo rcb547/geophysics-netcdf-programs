@@ -11,93 +11,76 @@ message(STATUS "Configuring geophysics-netcdf-programs")
 include(cmake/Message-Functions.cmake)
 include(cmake/Check-Functions.cmake)
 
-reportvar(CMAKE_VERSION)
-reportvar(CMAKE_SYSTEM_NAME)
-reportvar(CMAKE_BUILD_TYPE)
-
 # Set options
-option(WITH_MPI "WITH_MPI" ON)
-option(WITH_NETCDF "WITH_GDAL" ON)
-option(WITH_GDAL "WITH_GDAL" ON)
+option(WITH_MPI  "Build with MPI support" ON)
+option(WITH_NETCDF "Build with NetCDF support" ON)
+option(WITH_GDAL "Build with GDAL support" ON)
+option(WITH_CGAL "Build with CGAL support" ON)
 
 reportvar(WITH_MPI)
 reportvar(WITH_NETCDF)
 reportvar(WITH_GDAL)
+reportvar(WITH_CGAL)
 
-# Set the C++ standard to C++17
-set(CMAKE_CXX_STANDARD 17)
+reportvar(CMAKE_VERSION)
+reportvar(CMAKE_SYSTEM_NAME)
+reportvar(CMAKE_BUILD_TYPE)
 
 set(CMAKE_EXECUTABLE_SUFFIX_C ".exe")
 set(CMAKE_EXECUTABLE_SUFFIX_CXX ".exe")
 
-# Set the compile/link flags
-if(MSVC)
-	add_compile_options(/O2)
-	add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-	add_compile_definitions(_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
-else()
-	add_compile_options(-O3 -Wno-unused-but-set-variable -Wno-sign-compare -Wno-format-security -Wno-tautological-constant-compare)
-	link_libraries(-lstdc++fs)
+# Include the project level options and flags
+include(cmake/Typical-Compiler-Options.cmake)
+
+# Find Configure the external packages
+#This is where the NetCDF C++ src code is located if it is not installed and has to be built from source
+set(NETCDFCXX_SRC_DIR submodules/netcdf-cxx4/cxx4)
+include(cmake/Configure-External-Packages.cmake)
+
+if(${WITH_GDAL} AND GDAL_FOUND)
+	add_compile_definitions(ENABLE_GDAL)
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCC)
-	add_compile_options(-Wno-unused-result -Wno-date-time -Wno-error=date-time)
-	#On GCC, even with -Wno-date-time, still get warings of the form: warning: macro "__DATE__" might prevent reproducible builds [-Wdate-time]
+if(${WITH_CGAL} AND CGAL_FOUND)
+	add_compile_definitions(ENABLE_CGAL)
 endif()
 
-# Configure PkgConfig
-find_package(PkgConfig QUIET)
+#######################################
+### Add the build targets
 
-# Configure GDAL
-if(${WITH_GDAL})
-	#find_package(GDAL REQUIRED)
-endif()
+# Add the project include directories, which don't have their own CMakelists.txt
+include_directories(src/)
 
-# Configure CGAL
-if(${WITH_CGAL})
-	#find_package(GDAL REQUIRED)
-endif()
+# Add the cpp-utils submodule
+add_subdirectory(submodules/cpp-utils EXCLUDE_FROM_ALL)
 
-# Configure MPI if opted for
-if(${WITH_MPI})
-	#find_package(MPI REQUIRED QUIET)
-endif()
-
-# Add the include directories
-include_directories(src)
-
-# Add the cpp-utils library submodule
-add_subdirectory(submodules/cpp-utils)
-add_subdirectory(submodules/geophysics-netcdf)
-
-if(${WITH_MPI})
-	add_compile_definitions(${target} PRIVATE -D_MPI_ENABLED -DOMPI_SKIP_MPICXX)
-endif()
+# Add the geophysics-netcdf submodule
+add_subdirectory(submodules/geophysics-netcdf EXCLUDE_FROM_ALL)
 
 # Add the executables
 set(target aseggdf2netcdf)
 add_executable(${target} src/${target}.cpp)
-target_link_libraries(${target} PRIVATE cpp-utils-static)
-target_link_libraries(${target} PUBLIC geophysics-netcdf::static)
+target_link_libraries(${target} PRIVATE cpp-utils)
+target_link_libraries(${target} PRIVATE geophysics-netcdf)
 install(TARGETS ${target} OPTIONAL)
 
 set(target intrepid2netcdf)
 add_executable(${target} src/${target}.cpp)
-target_link_libraries(${target} PRIVATE cpp-utils-static)
-target_link_libraries(${target} PUBLIC geophysics-netcdf::static)
+target_link_libraries(${target} PRIVATE cpp-utils)
+target_link_libraries(${target} PRIVATE geophysics-netcdf)
 install(TARGETS ${target} OPTIONAL)
 
 set(target geophysicsnc2shape)
 add_executable(${target} src/${target}.cpp)
-target_link_libraries(${target} PRIVATE cpp-utils-static)
-target_link_libraries(${target} PUBLIC geophysics-netcdf::static)
-if(${WITH_GDAL} AND GDAL_FOUND)
-	target_compile_definitions(${target} PRIVATE -DHAVE_GDAL)
-endif()
+target_link_libraries(${target} PRIVATE cpp-utils)
+target_link_libraries(${target} PRIVATE geophysics-netcdf)
 install(TARGETS ${target} OPTIONAL)
 
 set(target test_geophysics_netcdf)
 add_executable(${target} src/${target}.cpp)
-target_link_libraries(${target} PRIVATE cpp-utils-static)
-target_link_libraries(${target} PUBLIC geophysics-netcdf::static)
+target_link_libraries(${target} PRIVATE cpp-utils)
+target_link_libraries(${target} PRIVATE geophysics-netcdf)
+if(${WITH_MPI})
+	target_compile_definitions(${target} PRIVATE ENABLE_MPI OMPI_SKIP_MPICXX)
+endif()
 install(TARGETS ${target} OPTIONAL)

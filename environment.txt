@@ -1,8 +1,0 @@
-GDAL_ROOT=C:\W10Dev\gdal-3.0.4
-GDAL_BIN=C:\W10Dev\gdal-3.0.4\bin;C:\W10Dev\gdal-3.0.4\bin\gdal\apps
-GDAL_DATA=C:\W10Dev\gdal-3.0.4\bin\gdal-data
-PROJ_LIB=C:\W10Dev\gdal-3.0.4\bin\proj6\share
-NETCDF_ROOT=C:\W10Dev\netCDF 4.6.1
-Path=C:\W10Dev\bin;C:\W10Dev\netCDF 4.6.1\bin;C:\W10Dev\gdal-3.0.4\bin;C:\W10Dev\gdal-3.0.4\bin\gdal\apps;C:\W10Dev\gdal-3.0.4\bin\gdal\apps\gdal\apps;
-
-

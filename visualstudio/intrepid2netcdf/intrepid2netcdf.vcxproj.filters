@@ -31,7 +31,7 @@
     <ClInclude Include="..\..\submodules\cpp-utils\src\string_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\submodules\geophysics-netcdf\src\geophysics_netcdf.h">
+    <ClInclude Include="..\..\submodules\geophysics-netcdf\include\geophysics_netcdf.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

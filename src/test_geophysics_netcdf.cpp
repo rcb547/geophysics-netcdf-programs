@@ -14,16 +14,8 @@ Author: Ross C. Brodie, Geoscience Australia.
 #include <vector>
 #include <limits>
 
-#ifdef USEGLOBALSTACKTRACE
-	#include "stacktrace.h"
-	cStackTrace gtrace;
-#endif
-
 #include "marray.hxx"
 using namespace andres;
-
-using namespace netCDF;
-using namespace netCDF::exceptions;
 
 #include "general_utils.h"
 #include "file_utils.h"
@@ -33,6 +25,9 @@ using namespace netCDF::exceptions;
 #include "stopwatch.h"
 #include "logger.h"
 
+using namespace netCDF;
+using namespace netCDF::exceptions;
+using namespace GeophysicsNetCDF;
 
 class cLogger glog;
 
@@ -49,7 +44,7 @@ bool example_magnetics(){
 
 
 	//Open the file and initialise the indexes
-	cGeophysicsNcFile ncfile(ncpath, NcFile::read);
+	GFile ncfile(ncpath, NcFile::read);
 
 	//Get the line numbers using the standard_name attributes
 	std::vector<int> linenumber   = ncfile.getLineNumbers();
@@ -76,9 +71,9 @@ bool example_magnetics(){
 
 	//Loop over all lines getting the x, y, and mag values
 	std::vector<double> x, y; std::vector<float>  mag;
-	cSampleVar xvar = ncfile.getSampleVar(xvarname);
-	cSampleVar yvar = ncfile.getSampleVar(yvarname);
-	cSampleVar mvar = ncfile.getSampleVar(mvarname);
+	GSampleVar xvar = ncfile.getSampleVar(xvarname);
+	GSampleVar yvar = ncfile.getSampleVar(yvarname);
+	GSampleVar mvar = ncfile.getSampleVar(mvarname);
 	
 	double t, ta, tb;
 	ta = gettime(); status = xvar.getAll(x); tb = gettime();
@@ -110,13 +105,13 @@ bool example_aem_conductivity(){
 	//std::string indir  = "http://dapds00.nci.org.au/thredds/dodsC/uc0/rr2_dev/rcb547/AEM_examples/";
 	std::string ncpath = indir + "AUS_10008_WestK_LCI.nc";	
 	//Open the file, get the line numbers
-	cGeophysicsNcFile ncfile(ncpath, NcFile::write);						
+	GFile ncfile(ncpath, NcFile::write);						
 	std::vector<int> linenumber = ncfile.getLineNumbers();
 	//Determine conductivity variable name by its standard name attribute
 	std::string stdname_conductivity = "layer_conductivity";
 	std::string varname = ncfile.getVarNameByLongName(stdname_conductivity);	
 	//Get conductivity variable
-	cSampleVar vc = ncfile.getSampleVar(varname);
+	GSampleVar vc = ncfile.getSampleVar(varname);
 	//Get conductivity data all at once in 1d array
 	std::vector<float> c1darray;
 	t1 = gettime();	status = vc.getAll(c1darray); t2 = gettime();
@@ -146,7 +141,7 @@ bool test_create(){
 	std::vector<size_t> linensamples  = { 10,   20,  30,  40 };
 	std::vector<size_t> flightnumbers = {11, 22, 33, 44 };
 
-	cGeophysicsNcFile   nc(ncpath,NcFile::FileMode::replace);
+	GFile   nc(ncpath,NcFile::FileMode::replace);
 	nc.InitialiseNew(linenumbers, linensamples);
 	size_t nwindows = 45;
 	size_t nlayers  = 30;
@@ -162,33 +157,40 @@ bool test_create(){
 	NcDim dim_window = nc.addDimVar("windows", windows);	
 	NcDim dim_layer  = nc.addDimVar("layers", layers);
 	
-	cSampleVar vfid = nc.addSampleVar("fiducial", ncInt);
+	bool status;
+	status = nc.addSampleVar("fiducial", ncInt);
+	GSampleVar vfid = nc.getSampleVar("fiducial");
 	vfid.add_long_name("fiducial");
 	vfid.add_units("1");
 	vfid.add_missing_value(34);
 
-	cSampleVar vx   = nc.addSampleVar("easting",  ncDouble);
+	status = nc.addSampleVar("easting", ncDouble);
+	GSampleVar vx   = nc.getSampleVar("easting");
 	vx.add_long_name("X");
 	vx.add_units("m");
 	
-
-	cSampleVar vy   = nc.addSampleVar("northing", ncDouble);	
-	cSampleVar vconductivity = nc.addSampleVar("conductivity", ncDouble, dim_layer);
-	cSampleVar vthickness    = nc.addSampleVar("thickness", ncDouble, dim_layer);
-		
+	status = nc.addSampleVar("northing", ncDouble);
+	GSampleVar vy = nc.getSampleVar("northing");
+	
+	status = nc.addSampleVar("conductivity", ncDouble, dim_layer);
+	GSampleVar vconductivity = nc.getSampleVar("conductivity");
 	vconductivity.add_long_name("conductivity");
 	vconductivity.add_units("mS/m");
 	vconductivity.add_missing_value(-999);
-	
+
+	status = nc.addSampleVar("thickness", ncDouble, dim_layer);
+	GSampleVar vthickness = nc.getSampleVar("thickness");
 	vthickness.add_long_name("thickness");
 	vthickness.add_units("m");
 	vthickness.add_missing_value(-999);
 
-	cLineVar vflight = nc.addLineVar("flight", ncInt);
+	status = nc.addLineVar("flight", ncInt);
+	GLineVar vflight = nc.getLineVar("flight");
 	vflight.putAll(flightnumbers);
 
 	std::vector<NcDim> emdims = { dim_rxcomponent, dim_window };
-	cSampleVar vem = nc.addSampleVar("em", ncDouble, emdims);
+	status = nc.addSampleVar("em", ncDouble, emdims);
+	GSampleVar vem = nc.getSampleVar("em");
 		
 	const size_t n = ntotalsamples*nrxcomponents*nwindows;
 	std::vector<double> em = increment(n,0.0,1.0);		
@@ -219,23 +221,23 @@ bool test_create(){
 
 bool test_update(){
 	std::string ncpath = "test.nc";
-	cGeophysicsNcFile   nc(ncpath, NcFile::FileMode::write);	
+	GFile   nc(ncpath, NcFile::FileMode::write);	
 	size_t ntotalsamples = nc.ntotalsamples();
-	cLineVar   lv = nc.addLineVar("extralinevar", ncDouble);
-	cSampleVar sv = nc.addSampleVar("extrasamplevar", ncDouble);
-	cSampleVar svw = nc.addSampleVar("extrasamplevarwindow", ncDouble,nc.getDim("windows"));
+	GLineVar   lv = nc.addgetLineVar("extralinevar", ncDouble);
+	GSampleVar sv = nc.addgetSampleVar("extrasamplevar", ncDouble);
+	GSampleVar svw = nc.addgetSampleVar("extrasamplevarwindow", ncDouble,nc.getDim("windows"));
 
 	NcDim ed = nc.addDim("extradim", 400);
-	cSampleVar sve = nc.addSampleVar("extrawindowsamplevarextradim", ncDouble, ed);
+	GSampleVar sve = nc.addgetSampleVar("extrawindowsamplevarextradim", ncDouble, ed);
 
-	cSampleVar ev = nc.getSampleVar("easting");
+	GSampleVar ev = nc.getSampleVar("easting");
 	std::vector<double> e;
 	bool status = ev.getAll(e);
 	status = ev.getLine(1, e);
 	e += 1.0;	
 	status = ev.putLine(1, e);
 
-	cSampleVar vem = nc.getSampleVar("em");
+	GSampleVar vem = nc.getSampleVar("em");
 	std::vector<double> em;
 	status = vem.getAll(em);
 	status = vem.getLine(0,em);
@@ -250,7 +252,7 @@ bool test_aseggdfexport_1d(){
 	std::string ncpath  = indir + "P1152RAD.nc";
 	std::string datpath = indir + "P1152RAD.dat";
 	std::string dfnpath = indir + "P1152RAD.dfn";
-	cGeophysicsNcFile nc(ncpath, NcFile::FileMode::read);
+	GFile nc(ncpath, NcFile::FileMode::read);
 	nc.export_ASEGGDF2(datpath,dfnpath);
 	return true;
 };
@@ -261,7 +263,7 @@ bool test_aseggdfexport_2d(){
 	std::string ncpath  = indir + "AUS_10008_WestK_LCI.nc";
 	std::string datpath = indir + "AUS_10008_WestK_LCI.dat";
 	std::string dfnpath = indir + "AUS_10008_WestK_LCI.dfn";
-	cGeophysicsNcFile nc(ncpath, NcFile::FileMode::read);
+	GFile nc(ncpath, NcFile::FileMode::read);
 	nc.export_ASEGGDF2(datpath, dfnpath);
 	return true;
 };
@@ -313,8 +315,8 @@ void test_marray(){
 void test_subsample() {
 	std::string inncpath = R"(D:\inversion_netcdf\line_data_em\902467_1_Field_Survey_Data_20200826.nc)";
 	std::string outncpath = R"(D:\inversion_netcdf\line_data_em\test.nc)";
-	cGeophysicsNcFile infile(inncpath, NcFile::FileMode::read);
-	cGeophysicsNcFile outfile(outncpath, NcFile::FileMode::replace);
+	GFile infile(inncpath, NcFile::FileMode::read);
+	GFile outfile(outncpath, NcFile::FileMode::replace);
 
 	std::vector<std::string> include_varnames = { "proj_client", "flight", "flight_index", "longitude", "latitude", "emz_nonhprg" };
 	std::vector<std::string> exclude_varnames = { "easting", "northing" };
@@ -332,14 +334,14 @@ void test_mpi(int argc, char** argv) {
 	std::string inncpath = R"(D:\inversion_netcdf\line_data_em\test.nc)";	
 	
 	if (mpirank == 0) {
-		cGeophysicsNcFile nc(inncpath, NcFile::FileMode::write);
+		GFile nc(inncpath, NcFile::FileMode::write);
 		nc.addSampleVar("newvar", NcType::nc_FLOAT);
 		nc.close();
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	cGeophysicsNcFile nc(inncpath, NcFile::FileMode::write);		
-	cSampleVar var = nc.getSampleVar("newvar");
+	GFile nc(inncpath, NcFile::FileMode::write);		
+	GSampleVar var = nc.getSampleVar("newvar");
 	for (size_t li = 0; li < nc.nlines(); li++) {
 		if ((li%mpisize) == mpirank){
 			float v = (float)((mpirank + 1) * 10000 + li);

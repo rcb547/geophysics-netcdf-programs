@@ -11,14 +11,6 @@ Author: Ross C. Brodie, Geoscience Australia.
 #include <vector>
 #include <limits>
 
-using namespace netCDF;
-using namespace netCDF::exceptions;
-
-#ifdef USEGLOBALSTACKTRACE
-#include "stacktrace.h"
-class cStackTrace gtrace;
-#endif
-
 #define _PROGRAM_ "geophysicsnc2shape"
 #define _VERSION_ "1.0"
 
@@ -28,6 +20,10 @@ class cStackTrace gtrace;
 #include "ogr_utils.h"
 #include "gdal_utils.h"
 #include "geophysics_netcdf.hpp"
+
+using namespace netCDF;
+using namespace netCDF::exceptions;
+using namespace GeophysicsNetCDF;
 
 #ifdef HAVE_GDAL
 	#include "crs.h"
@@ -53,7 +49,7 @@ public:
 
 	~cNcToShapefileConverter() {};
 
-	std::string look_for_var(cGeophysicsNcFile& N,  const std::vector<std::string>& candidates)
+	std::string look_for_var(GFile& N,  const std::vector<std::string>& candidates)
 	{
 		std::vector<NcVar> v = N.getAllVars();		
 		for(size_t ci=0; ci<candidates.size(); ci++){
@@ -66,7 +62,7 @@ public:
 		return std::string();
 	}
 
-	std::vector<double> get_linetype(cGeophysicsNcFile& N)
+	std::vector<double> get_linetype(GFile& N)
 	{		
 		std::vector<std::string> candidates;
 		candidates.push_back("linetype");
@@ -78,12 +74,12 @@ public:
 		if (vname.size() > 0) {
 			NcVar var = N.getVar(vname);
 			if (N.isLineVar(var)) {
-				cLineVar v = N.getLineVar(vname);
+				GLineVar v = N.getLineVar(vname);
 				v.getAll(ltype);
 			}
 			else if (N.isSampleVar(var)) {
 				ltype.resize(N.nlines());
-				cSampleVar v = N.getSampleVar(vname);
+				GSampleVar v = N.getSampleVar(vname);
 				for (size_t li = 0; li < N.nlines(); li++) {
 					v.getSample(li, 0, 0, ltype[li]);
 				}
@@ -103,7 +99,7 @@ public:
 		atts.push_back(cAttribute("linetype", (int)0));
 		L.add_fields(atts);
 
-		cGeophysicsNcFile N(NCPath);
+		GFile N(NCPath);
 		std::vector<unsigned int> ln;
 		N.getLineNumbers(ln);
 		const size_t nl = N.nlines();
